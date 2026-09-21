@@ -1,0 +1,2328 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Acapella - Split-Screen Music Video Collage</title>
+  <meta name="description" content="Create synchronized acapella music video collages on mobile and web." />
+  <meta name="theme-color" content="#0a0a0c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              bg: '#0a0a0c',
+              card: '#13131a',
+              cardLight: '#1c1c28',
+              border: '#272738',
+              purple: '#8b5cf6',
+              pink: '#ec4899',
+              cyan: '#06b6d4',
+            }
+          },
+          aspectRatio: {
+            '9/16': '9 / 16',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #18181b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #52525b;
+    }
+    /* Pulse Glow Animation */
+    @keyframes rec-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .recording-pulse {
+      animation: rec-pulse 1.8s infinite;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col selection:bg-rose-500 selection:text-white">
+
+      background-color: #0a0a0c;
+      color: #f3f4f6;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a0c;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #272738;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #8b5cf6;
+    }
+
+    .glass-card {
+      background: rgba(19, 19, 26, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .gradient-btn {
+      background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+      transition: all 0.2s ease;
+    }
+    .gradient-btn:active {
+      transform: scale(0.97);
+      opacity: 0.9;
+    }
+
+    /* Custom slider styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: #272738;
+      border-radius: 9999px;
+      height: 6px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #ec4899;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
+    }
+
+    /* Pulsing recording indicator */
+    @keyframes pulse-red {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .recording-pulse {
+      animation: pulse-red 1.5s infinite;
+    }
+  </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden antialiased">
+
+  <script>
+    // Application State Management
+    let currentLayout = '2-grid'; // '1-grid', '2-grid', '3-grid', '4-grid', '6-grid'
+    let currentAspect = '9:16';  // '9:16', '16:9', '1:1'
+    let tracks = [];             // Array of track objects: { id, blob, url, volume, muted, audioDelay }
+    let backingTrack = null;     // Backing track object: { blob, url, name, duration, volume, muted }
+    let maxTracks = 2;
+    let recordingTrackIndex = null;
+    let isRecording = false;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordStream = null;
+    let countdownInterval = null;
+    let recordTimerInterval = null;
+    let activePlaybackAudioElements = [];
+    let isPlayingMultiTrack = false;
+
+    // Database Initialization (IndexedDB for saving local recordings)
+    const DB_NAME = 'AcapellaStudioDB';
+    const DB_VERSION = 1;
+    let db = null;
+
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains('projects')) {
+            database.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+          }
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        request.onerror = (e) => reject(e);
+      });
+    }
+
+    function formatTime(seconds) {
+      if (isNaN(seconds) || seconds < 0) return '00:00';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // Initialize layout slot counts
+    function setTrackLayout(layout) {
+      currentLayout = layout;
+      switch(layout) {
+        case '1-grid': maxTracks = 1; break;
+        case '2-grid': maxTracks = 2; break;
+        case '3-grid': maxTracks = 3; break;
+        case '4-grid': maxTracks = 4; break;
+        case '6-grid': maxTracks = 6; break;
+        default: maxTracks = 2;
+      }
+      // Trim excess tracks if layout reduced
+      if (tracks.length > maxTracks) {
+        tracks = tracks.slice(0, maxTracks);
+      }
+      renderGrid();
+      renderMixerControls();
+    }
+  </script>
+
+  <!-- Application Shell Header -->
+  <header class="flex items-center justify-between px-4 py-3 bg-brand-bg/80 border-b border-brand-border/50 shrink-0 z-20">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-xl gradient-btn flex items-center justify-center text-white font-black text-lg shadow-lg shadow-brand-purple/20">
+        <i class="ph-bold ph-music-notes"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold leading-none tracking-tight gradient-text">Acapella</h1>
+        <span class="text-[10px] text-gray-400 font-medium">Studio Engine v2.5</span>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-2">
+      <button id="pwa-install-btn" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-purple/20 border border-brand-purple/40 text-brand-purple text-xs font-semibold hover:bg-brand-purple/30 transition">
+        <i class="ph-bold ph-download-simple"></i>
+        <span>Install App</span>
+      </button>
+      <button id="btn-quick-settings" class="p-2 rounded-xl text-gray-300 hover:bg-brand-card hover:text-white transition">
+        <i class="ph-bold ph-gear text-xl"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- PWA Install Banner Prompt Card -->
+  <div id="pwa-banner" class="hidden mx-4 mt-3 p-3 rounded-2xl glass-card border border-brand-purple/30 flex items-center justify-between z-20 animate-fade-in shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl gradient-btn flex items-center justify-center text-white text-xl">
+        <i class="ph-bold ph-device-mobile"></i>
+      </div>
+      <div>
+        <h4 class="text-xs font-bold text-white">Get Acapella on your phone</h4>
+        <p class="text-[11px] text-gray-400">Install for faster multi-track studio access.</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="pwa-banner-install" class="px-3 py-1.5 rounded-xl gradient-btn text-white text-xs font-semibold">Install</button>
+      <button id="pwa-banner-close" class="p-1.5 text-gray-400 hover:text-white"><i class="ph-bold ph-x"></i></button>
+    </div>
+  </div>
+
+  <!-- iOS PWA Install Modal Instructions -->
+  <div id="ios-pwa-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex-col justify-end sm:justify-center p-4">
+    <div class="bg-brand-card border border-brand-border rounded-3xl p-6 max-w-md w-full mx-auto space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="ph-bold ph-apple-logo text-brand-purple"></i> Install on iPhone / iPad
+        </h3>
+        <button onclick="document.getElementById('ios-pwa-modal').classList.add('hidden')" class="p-2 text-gray-400 hover:text-white">
+          <i class="ph-bold ph-x text-xl"></i>
+        </button>
+      </div>
+      <p class="text-sm text-gray-300 leading-relaxed">
+        To install <strong class="text-white">Acapella</strong> on iOS:
+      </p>
+      <ol class="space-y-3 text-xs text-gray-300">
+        <li class="flex items-center gap-3 bg-brand-bg/50 p-3 rounded-xl border border-brand-border/50">
+          <span class="w-6 h-6 rounded-full bg-brand-purple/20 text-brand-purple flex items-center justify-center font-bold">1</span>
+          <span>Tap the <strong class="text-white">Share</strong> icon in Safari's bottom toolbar.</span>
+        </li>
+        <li class="flex items-center gap-3 bg-brand-bg/50 p-3 rounded-xl border border-brand-border/50">
+          <span class="w-6 h-6 rounded-full bg-brand-purple/20 text-brand-purple flex items-center justify-center font-bold">2</span>
+          <span>Scroll down and select <strong class="text-white">'Add to Home Screen'</strong>.</span>
+        </li>
+        <li class="flex items-center gap-3 bg-brand-bg/50 p-3 rounded-xl border border-brand-border/50">
+          <span class="w-6 h-6 rounded-full bg-brand-purple/20 text-brand-purple flex items-center justify-center font-bold">3</span>
+          <span>Tap <strong class="text-white">'Add'</strong> in the top right corner.</span>
+        </li>
+      </ol>
+      <button onclick="document.getElementById('ios-pwa-modal').classList.add('hidden')" class="w-full py-3 rounded-xl gradient-btn text-white font-bold text-sm">Got it!</button>
+    </div>
+  </div>
+
+  <!-- Main Dynamic View Container -->
+  <main class="flex-1 relative overflow-y-auto overflow-x-hidden">
+
+    <!-- TAB 1: HOME VIEW -->
+    <section id="view-home" class="view-panel p-4 space-y-6 max-w-2xl mx-auto pb-24">
+      <!-- Welcome Banner -->
+      <div class="relative overflow-hidden rounded-3xl p-6 glass-card border border-brand-purple/30 bg-gradient-to-br from-brand-card to-brand-purple/10 space-y-4">
+        <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brand-purple/20 rounded-full blur-2xl"></div>
+        <span class="px-3 py-1 rounded-full bg-brand-purple/20 border border-brand-purple/40 text-brand-purple text-xs font-semibold">Studio Mobile First</span>
+        <h2 class="text-2xl font-extrabold text-white leading-tight">Create Harmonized Multi-Track Videos</h2>
+        <p class="text-xs text-gray-300">Record yourself or friends in synchronized split-screen parts. Hear existing tracks live through headphones while recording new layers!</p>
+        <div class="pt-2 flex flex-wrap gap-3">
+          <button onclick="navTo('create')" class="px-5 py-3 rounded-2xl gradient-btn text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-brand-purple/30">
+            <i class="ph-bold ph-plus-circle text-lg"></i> Start New Project
+          </button>
+          <button onclick="navTo('clips')" class="px-4 py-3 rounded-2xl bg-brand-cardLight border border-brand-border text-gray-200 font-semibold text-sm hover:text-white">
+            My Media Clips
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Start Layout Presets Picker -->
+      <div class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider text-gray-400">Quick Start Presets</h3>
+          <span class="text-xs text-brand-purple font-medium">2 to 8 Tracks</span>
+        </div>
+        <div class="grid grid-cols-4 gap-2.5">
+          <button onclick="startNewProjectWithTracks(2)" class="p-3 rounded-2xl bg-brand-card border border-brand-border hover:border-brand-purple flex flex-col items-center gap-2 group transition">
+            <div class="w-10 h-10 rounded-xl bg-brand-bg flex flex-col gap-0.5 p-1 group-hover:bg-brand-purple/10">
+              <div class="bg-brand-purple/60 rounded h-1/2 w-full"></div>
+              <div class="bg-brand-pink/60 rounded h-1/2 w-full"></div>
+            </div>
+            <span class="text-xs font-semibold text-gray-300 group-hover:text-white">2 Tracks</span>
+          </button>
+
+          <button onclick="startNewProjectWithTracks(3)" class="p-3 rounded-2xl bg-brand-card border border-brand-border hover:border-brand-purple flex flex-col items-center gap-2 group transition">
+            <div class="w-10 h-10 rounded-xl bg-brand-bg flex flex-col gap-0.5 p-1 group-hover:bg-brand-purple/10">
+              <div class="bg-brand-purple/60 rounded h-1/2 w-full"></div>
+              <div class="flex gap-0.5 h-1/2">
+                <div class="bg-brand-pink/60 rounded w-1/2"></div>
+                <div class="bg-brand-cyan/60 rounded w-1/2"></div>
+              </div>
+            </div>
+            <span class="text-xs font-semibold text-gray-300 group-hover:text-white">3 Tracks</span>
+          </button>
+
+          <button onclick="startNewProjectWithTracks(4)" class="p-3 rounded-2xl bg-brand-card border border-brand-border hover:border-brand-purple flex flex-col items-center gap-2 group transition">
+            <div class="w-10 h-10 rounded-xl bg-brand-bg grid grid-cols-2 gap-0.5 p-1 group-hover:bg-brand-purple/10">
+              <div class="bg-brand-purple/60 rounded"></div>
+              <div class="bg-brand-pink/60 rounded"></div>
+              <div class="bg-brand-cyan/60 rounded"></div>
+              <div class="bg-indigo-500/60 rounded"></div>
+            </div>
+            <span class="text-xs font-semibold text-gray-300 group-hover:text-white">4 Grid</span>
+          </button>
+
+          <button onclick="startNewProjectWithTracks(6)" class="p-3 rounded-2xl bg-brand-card border border-brand-border hover:border-brand-purple flex flex-col items-center gap-2 group transition">
+            <div class="w-10 h-10 rounded-xl bg-brand-bg grid grid-cols-2 gap-0.5 p-1 group-hover:bg-brand-purple/10">
+              <div class="bg-brand-purple/60 rounded"></div>
+              <div class="bg-brand-pink/60 rounded"></div>
+              <div class="bg-brand-cyan/60 rounded"></div>
+              <div class="bg-indigo-500/60 rounded"></div>
+              <div class="bg-amber-500/60 rounded"></div>
+              <div class="bg-emerald-500/60 rounded"></div>
+            </div>
+            <span class="text-xs font-semibold text-gray-300 group-hover:text-white">6 Grid</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Projects Section -->
+      <div class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider text-gray-400">Recent Projects</h3>
+          <button onclick="navTo('projects')" class="text-xs text-brand-purple hover:underline font-semibold">View All</button>
+        </div>
+        <div id="home-recent-projects" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Empty state -->
+          <div class="col-span-full text-center p-8 bg-brand-card/50 rounded-2xl border border-dashed border-brand-border">
+            <i class="ph-bold ph-film-strip text-3xl text-gray-500 mb-2"></i>
+            <p class="text-xs text-gray-400">No saved projects yet. Start a new acapella creation!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pro Sync Tip -->
+      <div class="p-4 rounded-2xl bg-brand-purple/10 border border-brand-purple/30 flex items-start gap-3">
+        <i class="ph-bold ph-headphones text-brand-purple text-2xl shrink-0 mt-0.5"></i>
+        <div>
+          <h4 class="text-xs font-bold text-white">Headphones Recommended</h4>
+          <p class="text-[11px] text-gray-300 mt-0.5">For tight singing synchronization, wear headphones while recording track 2 and beyond so your mic only captures your live vocal performance!</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: CREATE / STUDIO VIEW -->
+    <section id="view-create" class="view-panel p-3 max-w-4xl mx-auto hidden pb-28 space-y-4">
+      
+      <!-- Studio Wizard Steps Bar -->
+      <div class="flex items-center justify-between glass-card p-2.5 rounded-2xl border border-brand-border text-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full gradient-btn flex items-center justify-center font-bold text-white text-[10px]" id="step-badge">1</span>
+          <span id="step-title" class="font-bold text-white">Select Track Layout</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-export-studio" class="px-3 py-1.5 rounded-xl gradient-btn text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-brand-pink/20">
+            <i class="ph-bold ph-export"></i> Export 9:16
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 1: Layout Picker Drawer / Selector -->
+      <div id="studio-step-layout" class="space-y-4 bg-brand-card p-4 rounded-3xl border border-brand-border">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-border/60 pb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white">1. Choose Number of Tracks</h3>
+            <p class="text-xs text-gray-400">Select between 2 to 8 split-screen video panels</p>
+          </div>
+          <!-- Track Number Tabs -->
+          <div class="flex items-center gap-1 bg-brand-bg p-1 rounded-xl overflow-x-auto">
+            <button onclick="setTrackCount(2)" class="track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold text-gray-400" data-num="2">2</button>
+            <button onclick="setTrackCount(3)" class="track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold text-gray-400" data-num="3">3</button>
+            <button onclick="setTrackCount(4)" class="track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold text-gray-400" data-num="4">4</button>
+            <button onclick="setTrackCount(5)" class="track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold text-gray-400" data-num="5">5</button>
+            <button onclick="setTrackCount(6)" class="track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold text-gray-400" data-num="6">6</button>
+            <button onclick="setTrackCount(7)" class="track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold text-gray-400" data-num="7">7</button>
+            <button onclick="setTrackCount(8)" class="track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold text-gray-400" data-num="8">8</button>
+          </div>
+        </div>
+
+        <!-- Layout Arrangement Options -->
+        <div>
+          <label class="text-xs font-semibold text-gray-300 block mb-2">Split-Screen Layout Style</label>
+          <div id="layout-preset-options" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <!-- Dynamically Rendered Layout Options -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Studio Workspace: 9:16 Canvas Live Preview Player + Track Control Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+        
+        <!-- Left / Center Column: Interactive 9:16 Portrait Canvas Player -->
+        <div class="md:col-span-6 flex flex-col items-center">
+          <div class="w-full max-w-[320px] aspect-9/16 bg-black rounded-3xl overflow-hidden relative border-2 border-brand-border/80 shadow-2xl group flex items-center justify-center">
+            
+            <!-- Real-time Multi-Video Canvas Rendering Engine -->
+            <canvas id="studio-canvas" class="w-full h-full object-contain bg-black"></canvas>
+
+            <!-- Canvas Watermark Indicator -->
+            <div id="canvas-watermark" class="absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm border border-white/10 text-[10px] font-extrabold tracking-wider text-gray-300 uppercase pointer-events-none flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-pink"></span>
+              Acapella
+            </div>
+
+            <!-- Empty Overlay State if No Tracks Active -->
+            <div id="canvas-empty-state" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-brand-bg/90 pointer-events-none">
+              <div class="w-14 h-14 rounded-2xl gradient-btn flex items-center justify-center text-white text-2xl mb-3 shadow-lg shadow-brand-purple/30">
+                <i class="ph-bold ph-video-camera"></i>
+              </div>
+              <h4 class="text-sm font-bold text-white">Add Your First Performance</h4>
+              <p class="text-xs text-gray-400 mt-1">Record or pick clips for each slot on the right to build your acapella collage.</p>
+            </div>
+
+            <!-- Processing / Export Spinner Overlay -->
+            <div id="canvas-loader" class="absolute inset-0 bg-black/80 backdrop-blur-sm hidden flex-col items-center justify-center z-30">
+              <div class="w-12 h-12 border-4 border-brand-purple border-t-transparent rounded-full animate-spin mb-3"></div>
+              <span class="text-xs font-bold text-white">Rendering Composition...</span>
+              <span id="canvas-loader-progress" class="text-[11px] text-gray-400 mt-1">0%</span>
+            </div>
+          </div>
+
+          <!-- Video Transport / Scrubber Controls -->
+          <div class="w-full max-w-[320px] mt-3 glass-card p-3 rounded-2xl border border-brand-border space-y-2">
+            <div class="flex items-center justify-between text-xs text-gray-400 font-mono">
+              <span id="player-time-current">00:00.0</span>
+              <span id="player-time-total">00:00.0</span>
+            </div>
+            
+            <input id="player-scrubber" type="range" min="0" max="100" value="0" step="0.1" class="w-full cursor-pointer">
+
+            <div class="flex items-center justify-between pt-1">
+              <button id="btn-player-mute" class="p-2 text-gray-300 hover:text-white rounded-xl bg-brand-bg/50">
+                <i class="ph-bold ph-speaker-high text-lg"></i>
+              </button>
+
+              <button id="btn-player-toggle" class="w-12 h-12 rounded-full gradient-btn text-white flex items-center justify-center shadow-lg shadow-brand-purple/30">
+                <i class="ph-bold ph-play text-xl ml-0.5"></i>
+              </button>
+
+              <button id="btn-player-fullscreen" class="p-2 text-gray-300 hover:text-white rounded-xl bg-brand-bg/50">
+                <i class="ph-bold ph-arrows-out text-lg"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Track Slots List & Audio Synchronization Panels -->
+        <div class="md:col-span-6 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider text-gray-400 flex items-center gap-2">
+              <i class="ph-bold ph-sliders-horizontal text-brand-purple"></i> Track Slots
+            </h3>
+            <span id="active-tracks-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-brand-purple/20 text-brand-purple font-semibold border border-brand-purple/30">0 / 4 Filled</span>
+          </div>
+
+          <!-- Dynamic Slots List Container -->
+          <div id="studio-slots-container" class="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+            <!-- Dynamic Slot Cards Injected Here -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: MY CLIPS LIBRARY VIEW -->
+    <section id="view-clips" class="view-panel p-4 max-w-3xl mx-auto hidden pb-28 space-y-4">
+      <div class="flex items-center justify-between border-b border-brand-border pb-3">
+        <div>
+          <h2 class="text-xl font-extrabold text-white">My Clips Library</h2>
+          <p class="text-xs text-gray-400">Save and reuse individual video recordings across projects</p>
+        </div>
+        <button onclick="triggerClipUpload()" class="px-4 py-2 rounded-xl gradient-btn text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-brand-purple/20">
+          <i class="ph-bold ph-upload-simple text-sm"></i> Upload Clip
+        </button>
+      </div>
+
+      <!-- Clips Grid Container -->
+      <div id="clips-library-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <!-- Injected via IndexedDB -->
+      </div>
+    </section>
+
+    <!-- TAB 4: MY PROJECTS VIEW -->
+    <section id="view-projects" class="view-panel p-4 max-w-3xl mx-auto hidden pb-28 space-y-4">
+      <div class="flex items-center justify-between border-b border-brand-border pb-3">
+        <div>
+          <h2 class="text-xl font-extrabold text-white">Saved Projects</h2>
+          <p class="text-xs text-gray-400">Manage your saved multi-track acapella arrangements</p>
+        </div>
+        <button onclick="navTo('create')" class="px-4 py-2 rounded-xl gradient-btn text-white font-bold text-xs flex items-center gap-1.5">
+          <i class="ph-bold ph-plus-circle text-sm"></i> New Project
+        </button>
+      </div>
+
+      <!-- Projects Grid Container -->
+      <div id="projects-library-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Injected via IndexedDB -->
+      </div>
+    </section>
+
+    <!-- TAB 5: SETTINGS & DIAGNOSTICS VIEW -->
+    <section id="view-settings" class="view-panel p-4 max-w-2xl mx-auto hidden pb-28 space-y-6">
+      <div class="border-b border-brand-border pb-3">
+        <h2 class="text-xl font-extrabold text-white">Studio Settings & Diagnostic</h2>
+        <p class="text-xs text-gray-400">Configure device permissions, watermarks, and audio calibration</p>
+      </div>
+
+      <!-- Diagnostic Camera / Mic Test Card -->
+      <div class="glass-card p-4 rounded-2xl border border-brand-border space-y-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="ph-bold ph-screencast text-brand-purple"></i> Camera & Microphone Hardware Diagnostic
+        </h3>
+        <p class="text-xs text-gray-300">Test device media inputs and verify real-time mic sensitivity level.</p>
+
+        <div class="relative bg-black rounded-2xl aspect-video overflow-hidden flex items-center justify-center border border-brand-border">
+          <video id="diagnostic-preview" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+          <div id="diagnostic-placeholder" class="text-center p-4">
+            <i class="ph-bold ph-camera-slash text-3xl text-gray-500 mb-1"></i>
+            <p class="text-xs text-gray-400">Camera preview inactive</p>
+          </div>
+        </div>
+
+        <!-- Mic Level Visual Meter -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs text-gray-400">
+            <span>Microphone Sensitivity Level</span>
+            <span id="diagnostic-mic-val">0%</span>
+          </div>
+          <div class="w-full bg-brand-bg h-3 rounded-full overflow-hidden p-0.5 border border-brand-border">
+            <div id="diagnostic-mic-bar" class="bg-gradient-to-r from-brand-purple to-brand-pink h-full rounded-full transition-all duration-75" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <button id="btn-test-hardware" class="w-full py-2.5 rounded-xl bg-brand-cardLight border border-brand-border text-white text-xs font-bold hover:bg-brand-purple/20 transition">
+          Test Camera & Mic Hardware
+        </button>
+      </div>
+
+      <!-- Application Preferences -->
+      <div class="glass-card p-4 rounded-2xl border border-brand-border space-y-4">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="ph-bold ph-gear-six text-brand-pink"></i> Studio Preferences
+        </h3>
+
+        <!-- Watermark Toggle -->
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="text-xs font-bold text-white">Subtle Branding Watermark</h4>
+            <p class="text-[11px] text-gray-400">Include 'Acapella' tag in the bottom-right corner of exported videos.</p>
+          </div>
+          <input type="checkbox" id="pref-watermark" checked class="w-5 h-5 accent-brand-purple cursor-pointer">
+        </div>
+
+        <!-- Audio Sync Offset Slider -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="font-bold text-white">Global Audio Latency Compensation</span>
+            <span id="pref-latency-val" class="text-brand-purple font-mono">0 ms</span>
+          </div>
+          <input id="pref-latency" type="range" min="-200" max="200" value="0" step="5" class="w-full cursor-pointer">
+          <p class="text-[10px] text-gray-400">Adjust if audio is slightly out of sync with video due to Bluetooth headphone delay.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- RECORDING MODAL OVERLAY -->
+  <div id="recording-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex-col justify-between p-4">
+    
+    <!-- Top Modal Header -->
+    <div class="flex items-center justify-between z-10">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-red-500 recording-pulse" id="rec-dot"></span>
+        <span id="rec-title" class="text-sm font-bold text-white">Recording Track Slot 1</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Switch Camera Button -->
+        <button id="btn-rec-switch-cam" class="p-2.5 rounded-full bg-brand-card/80 border border-brand-border text-white text-lg hover:bg-brand-purple/20">
+          <i class="ph-bold ph-camera-rotate"></i>
+        </button>
+        <!-- Close Modal -->
+        <button id="btn-rec-close" class="p-2.5 rounded-full bg-brand-card/80 border border-brand-border text-gray-400 hover:text-white text-lg">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Countdown Overlay Big Number -->
+    <div id="rec-countdown-overlay" class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none hidden">
+      <span id="rec-countdown-num" class="text-8xl font-black text-brand-pink animate-ping">3</span>
+    </div>
+
+    <!-- Center Camera Preview & Mic Bar -->
+    <div class="relative flex-1 my-3 rounded-3xl overflow-hidden bg-brand-bg border border-brand-border/80 flex items-center justify-center">
+      <video id="rec-live-video" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
+
+      <!-- Headphone Recommendation Banner Overlay -->
+      <div id="rec-headphone-tip" class="absolute top-3 left-3 right-3 p-2.5 rounded-2xl glass-card border border-brand-purple/40 text-xs text-gray-200 flex items-center gap-2 z-10">
+        <i class="ph-bold ph-headphones text-brand-pink text-lg shrink-0"></i>
+        <span><strong>Pro Tip:</strong> Use headphones to hear existing reference tracks clearly!</span>
+      </div>
+
+      <!-- Live Mic Level Meter Sidebar -->
+      <div class="absolute right-3 top-1/2 -translate-y-1/2 h-40 w-2 bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/20">
+        <div id="rec-mic-meter" class="w-full bg-gradient-to-t from-emerald-400 via-brand-purple to-brand-pink rounded-full transition-all duration-75" style="height: 0%"></div>
+      </div>
+
+      <!-- Timer Box -->
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-black/70 border border-white/20 text-white font-mono text-sm font-bold flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+        <span id="rec-timer">00:00.0</span>
+      </div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="flex items-center justify-center gap-6 z-10 pb-2">
+      <button id="btn-rec-retake" class="px-5 py-3 rounded-2xl bg-brand-card border border-brand-border text-white text-xs font-bold hidden flex items-center gap-2">
+        <i class="ph-bold ph-arrows-counter-clock-wise text-base"></i> Retake
+      </button>
+
+      <button id="btn-rec-start-stop" class="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center border-4 border-white/30 shadow-xl shadow-red-600/30 transition transform active:scale-95">
+        <div id="rec-btn-icon" class="w-6 h-6 rounded-md bg-white"></div>
+      </button>
+
+      <button id="btn-rec-save" class="px-5 py-3 rounded-2xl gradient-btn text-white text-xs font-bold hidden flex items-center gap-2 shadow-lg shadow-brand-pink/30">
+        <i class="ph-bold ph-check-circle text-base"></i> Keep Clip
+      </button>
+    </div>
+  </div>
+
+  <!-- EXPORT / READY MODAL OVERLAY -->
+  <div id="export-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex-col items-center justify-center p-4">
+    <div class="bg-brand-card border border-brand-border rounded-3xl p-6 max-w-sm w-full space-y-4 text-center">
+      <div class="w-16 h-16 rounded-2xl gradient-btn flex items-center justify-center text-white text-3xl mx-auto shadow-xl shadow-brand-purple/30">
+        <i class="ph-bold ph-sparkle"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-extrabold text-white">Your Video is Ready!</h3>
+        <p class="text-xs text-gray-300 mt-1">High resolution 9:16 portrait acapella video exported successfully.</p>
+      </div>
+
+      <!-- Preview Thumbnail / Player -->
+      <div class="relative aspect-9/16 max-h-64 rounded-2xl overflow-hidden border border-brand-border bg-black mx-auto">
+        <video id="export-preview-video" controls class="w-full h-full object-contain"></video>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <a id="btn-export-download" download="acapella-collage.mp4" class="w-full py-3 rounded-xl gradient-btn text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-brand-purple/20">
+          <i class="ph-bold ph-download-simple text-base"></i> Download Video (MP4/WebM)
+        </a>
+        <button id="btn-export-save-project" class="w-full py-2.5 rounded-xl bg-brand-cardLight border border-brand-border text-gray-200 text-xs font-bold hover:text-white">
+          Save Project to Library
+        </button>
+        <button onclick="document.getElementById('export-modal').classList.add('hidden')" class="w-full py-2 text-gray-400 hover:text-white text-xs font-semibold">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY CLIPS PICKER MODAL (For Slot Assignment) -->
+  <div id="clips-picker-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex-col justify-end sm:justify-center p-4">
+    <div class="bg-brand-card border border-brand-border rounded-3xl p-5 max-w-md w-full mx-auto space-y-3 max-h-[80vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-brand-border pb-2">
+        <h3 class="text-sm font-bold text-white">Select Saved Clip</h3>
+        <button onclick="document.getElementById('clips-picker-modal').classList.add('hidden')" class="p-1 text-gray-400 hover:text-white">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+      <div id="clips-picker-list" class="grid grid-cols-2 gap-2.5 overflow-y-auto flex-1 pr-1">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-brand-bg/95 border-t border-brand-border/60 backdrop-blur-md z-40 px-2 py-2">
+    <div class="max-w-md mx-auto flex items-center justify-around">
+      
+      <button onclick="navTo('home')" data-tab="home" class="nav-btn flex flex-col items-center gap-1 text-brand-purple">
+        <i class="ph-bold ph-house text-xl"></i>
+        <span class="text-[10px] font-semibold">Home</span>
+      </button>
+
+      <button onclick="navTo('create')" data-tab="create" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+        <i class="ph-bold ph-circle-plus text-xl"></i>
+        <span class="text-[10px] font-semibold">Create</span>
+      </button>
+
+      <button onclick="navTo('clips')" data-tab="clips" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+        <i class="ph-bold ph-film-strip text-xl"></i>
+        <span class="text-[10px] font-semibold">My Clips</span>
+      </button>
+
+      <button onclick="navTo('projects')" data-tab="projects" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+        <i class="ph-bold ph-folders text-xl"></i>
+        <span class="text-[10px] font-semibold">Projects</span>
+      </button>
+
+      <button onclick="navTo('settings')" data-tab="settings" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+        <i class="ph-bold ph-gear-six text-xl"></i>
+        <span class="text-[10px] font-semibold">Settings</span>
+      </button>
+
+    </div>
+  </nav>
+
+  <!-- TOAST NOTIFICATION BANNER -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 bg-brand-card/90 border border-brand-purple/50 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl z-50 transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-4 flex items-center gap-2">
+    <i class="ph-bold ph-info text-brand-pink text-base"></i>
+    <span id="toast-msg">Message</span>
+  </div>
+
+  <!-- Hidden File Input for Video Uploads -->
+  <input type="file" id="global-video-input" accept="video/*" class="hidden">
+
+  <!-- MAIN APPLICATION LOGIC SCRIPT -->
+  <script>
+    /* ==========================================================================
+       1. GLOBAL STATE & LAYOUT CONFIGURATIONS
+       ========================================================================== */
+    const AppState = {
+      activeTab: 'home',
+      currentProject: {
+        id: null,
+        title: 'New Acapella Composition',
+        trackCount: 4,
+        layoutPreset: 'grid-2x2',
+        watermark: true,
+        latencyMs: 0,
+        slots: [] // Array of slot objects: { id, blob, url, title, duration, volume: 1, muted: false, offsetMs: 0 }
+      },
+      pwaPrompt: null,
+      recording: {
+        slotIndex: null,
+        mediaRecorder: null,
+        chunks: [],
+        stream: null,
+        audioCtx: null,
+        analyser: null,
+        micInterval: null,
+        timerInterval: null,
+        startTime: 0,
+        facingMode: 'user',
+        refAudioNodes: []
+      },
+      playback: {
+        isPlaying: false,
+        audioCtx: null,
+        audioNodes: [],
+        animFrame: null,
+        startTime: 0,
+        currentTime: 0,
+        maxDuration: 0,
+        isMuted: false
+      }
+    };
+
+    /* Layout Rect Preset Definitions for 9:16 Aspect Ratio Canvas (Width: 720, Height: 1280) */
+    const CANVAS_W = 720;
+    const CANVAS_H = 1280;
+
+    const LAYOUT_PRESETS = {
+      2: [
+        { id: 'v-split', name: 'Vertical Stack', rects: [
+            { x: 0, y: 0, w: 720, h: 640 },
+            { x: 0, y: 640, w: 720, h: 640 }
+          ]
+        },
+        { id: 'h-split', name: 'Side-by-Side', rects: [
+            { x: 0, y: 0, w: 360, h: 1280 },
+            { x: 360, y: 0, w: 360, h: 1280 }
+          ]
+        }
+      ],
+      3: [
+        { id: 'top1-bot2', name: '1 Top / 2 Bottom', rects: [
+            { x: 0, y: 0, w: 720, h: 640 },
+            { x: 0, y: 640, w: 360, h: 640 },
+            { x: 360, y: 640, w: 360, h: 640 }
+          ]
+        },
+        { id: 'bars-3', name: '3 Horizontal Bars', rects: [
+            { x: 0, y: 0, w: 720, h: 426 },
+            { x: 0, y: 426, w: 720, h: 426 },
+            { x: 0, y: 852, w: 720, h: 428 }
+          ]
+        }
+      ],
+      4: [
+        { id: 'grid-2x2', name: '2 x 2 Quad Grid', rects: [
+            { x: 0, y: 0, w: 360, h: 640 },
+            { x: 360, y: 0, w: 360, h: 640 },
+            { x: 0, y: 640, w: 360, h: 640 },
+            { x: 360, y: 640, w: 360, h: 640 }
+          ]
+        }
+      ],
+      5: [
+        { id: 'grid-2-3', name: '2 Top / 3 Bottom', rects: [
+            { x: 0, y: 0, w: 360, h: 640 },
+            { x: 360, y: 0, w: 360, h: 640 },
+            { x: 0, y: 640, w: 240, h: 640 },
+            { x: 240, y: 640, w: 240, h: 640 },
+            { x: 480, y: 640, w: 240, h: 640 }
+          ]
+        }
+      ],
+      6: [
+        { id: 'grid-2x3', name: '2 x 3 Grid', rects: [
+            { x: 0, y: 0, w: 360, h: 426 },
+            { x: 360, y: 0, w: 360, h: 426 },
+            { x: 0, y: 426, w: 360, h: 426 },
+            { x: 360, y: 426, w: 360, h: 426 },
+            { x: 0, y: 852, w: 360, h: 428 },
+            { x: 360, y: 852, w: 360, h: 428 }
+          ]
+        }
+      ],
+      7: [
+        { id: 'grid-3-4', name: '3 Top / 4 Bottom', rects: [
+            { x: 0, y: 0, w: 240, h: 640 },
+            { x: 240, y: 0, w: 240, h: 640 },
+            { x: 480, y: 0, w: 240, h: 640 },
+            { x: 0, y: 640, w: 180, h: 640 },
+            { x: 180, y: 640, w: 180, h: 640 },
+            { x: 360, y: 640, w: 180, h: 640 },
+            { x: 540, y: 640, w: 180, h: 640 }
+          ]
+        }
+      ],
+      8: [
+        { id: 'grid-2x4', name: '2 x 4 Grid', rects: [
+            { x: 0, y: 0, w: 360, h: 320 },
+            { x: 360, y: 0, w: 360, h: 320 },
+            { x: 0, y: 320, w: 360, h: 320 },
+            { x: 360, y: 320, w: 360, h: 320 },
+            { x: 0, y: 640, w: 360, h: 320 },
+            { x: 360, y: 640, w: 360, h: 320 },
+            { x: 0, y: 960, w: 360, h: 320 },
+            { x: 360, y: 960, w: 360, h: 320 }
+          ]
+        }
+      ]
+    };
+
+    /* ==========================================================================
+       2. INDEXEDDB PERSISTENCE LAYER
+       ========================================================================== */
+    const DB_NAME = 'AcapellaStudioDB';
+    const DB_VERSION = 1;
+    let db = null;
+
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains('clips')) {
+            database.createObjectStore('clips', { keyPath: 'id' });
+          }
+          if (!database.objectStoreNames.contains('projects')) {
+            database.createObjectStore('projects', { keyPath: 'id' });
+          }
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        request.onerror = (e) => reject(e);
+      });
+    }
+
+    async function saveClipToDB(clipObj) {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('clips', 'readwrite');
+        const store = tx.objectStore('clips');
+        store.put(clipObj);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    async function getAllClipsFromDB() {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('clips', 'readonly');
+        const store = tx.objectStore('clips');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = (e) => reject(e);
+      });
+    }
+
+    async function deleteClipFromDB(id) {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('clips', 'readwrite');
+        tx.objectStore('clips').delete(id);
+        tx.oncomplete = () => resolve(true);
+      });
+    }
+
+    async function saveProjectToDB(projObj) {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('projects', 'readwrite');
+        tx.objectStore('projects').put(projObj);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    async function getAllProjectsFromDB() {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('projects', 'readonly');
+        const request = tx.objectStore('projects').getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = (e) => reject(e);
+      });
+    }
+
+    async function deleteProjectFromDB(id) {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('projects', 'readwrite');
+        tx.objectStore('projects').delete(id);
+        tx.oncomplete = () => resolve(true);
+      });
+    }
+
+    /* ==========================================================================
+       3. NAVIGATION & UI HELPERS
+       ========================================================================== */
+    function navTo(tabName) {
+      AppState.activeTab = tabName;
+      document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+      const activePanel = document.getElementById(`view-${tabName}`);
+      if (activePanel) activePanel.classList.remove('hidden');
+
+      // Update Nav Buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.className = 'nav-btn flex flex-col items-center gap-1 text-brand-purple';
+        } else {
+          btn.className = 'nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white';
+        }
+      });
+
+      // Refresh view dynamic data
+      if (tabName === 'clips') renderClipsGrid();
+      if (tabName === 'projects') renderProjectsGrid();
+      if (tabName === 'home') renderHomeProjects();
+      if (tabName === 'create') renderStudioWorkspace();
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = message;
+      toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
+      }, 3000);
+    }
+
+    /* ==========================================================================
+       4. PWA INSTALLATION PROMPTS & SERVICE WORKER
+       ========================================================================== */
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      AppState.pwaPrompt = e;
+      const installBtn = document.getElementById('pwa-install-btn');
+      const banner = document.getElementById('pwa-banner');
+      if (installBtn) installBtn.classList.remove('hidden');
+      if (banner) banner.classList.remove('hidden');
+    });
+
+    document.getElementById('pwa-install-btn')?.addEventListener('click', triggerPwaInstall);
+    document.getElementById('pwa-banner-install')?.addEventListener('click', triggerPwaInstall);
+    document.getElementById('pwa-banner-close')?.addEventListener('click', () => {
+      document.getElementById('pwa-banner').classList.add('hidden');
+    });
+
+    function triggerPwaInstall() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        document.getElementById('ios-pwa-modal').classList.remove('hidden');
+        return;
+      }
+      if (AppState.pwaPrompt) {
+        AppState.pwaPrompt.prompt();
+        AppState.pwaPrompt.userChoice.then((choice) => {
+          if (choice.outcome === 'accepted') {
+            showToast('Acapella app installed successfully!');
+          }
+          AppState.pwaPrompt = null;
+        });
+      } else {
+        showToast('App installation is not directly supported on this browser.');
+      }
+    }
+
+    /* ==========================================================================
+       5. CREATE STUDIO: TRACKS & LAYOUT ENGINE
+       ========================================================================== */
+    function startNewProjectWithTracks(count) {
+      AppState.currentProject = {
+        id: 'proj_' + Date.now(),
+        title: `${count}-Part Acapella Collage`,
+        trackCount: count,
+        layoutPreset: LAYOUT_PRESETS[count][0].id,
+        watermark: document.getElementById('pref-watermark')?.checked ?? true,
+        latencyMs: 0,
+        slots: Array.from({ length: count }, (_, i) => ({
+          id: i + 1,
+          videoEl: null,
+          blob: null,
+          url: null,
+          title: `Track ${i + 1}`,
+          duration: 0,
+          volume: 1.0,
+          muted: false,
+          offsetMs: 0
+        }))
+      };
+      navTo('create');
+    }
+
+    function setTrackCount(count) {
+      if (!LAYOUT_PRESETS[count]) return;
+      AppState.currentProject.trackCount = count;
+      AppState.currentProject.layoutPreset = LAYOUT_PRESETS[count][0].id;
+      
+      // Adjust slots array size
+      const currentSlots = AppState.currentProject.slots;
+      if (currentSlots.length < count) {
+        for (let i = currentSlots.length; i < count; i++) {
+          currentSlots.push({
+            id: i + 1,
+            videoEl: null,
+            blob: null,
+            url: null,
+            title: `Track ${i + 1}`,
+            duration: 0,
+            volume: 1.0,
+            muted: false,
+            offsetMs: 0
+          });
+        }
+      } else if (currentSlots.length > count) {
+        AppState.currentProject.slots = currentSlots.slice(0, count);
+      }
+
+      renderStudioWorkspace();
+    }
+
+    function renderStudioWorkspace() {
+      const count = AppState.currentProject.trackCount;
+
+      // Update Track Number Tab UI
+      document.querySelectorAll('.track-num-btn').forEach(btn => {
+        if (parseInt(btn.dataset.num) === count) {
+          btn.className = 'track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-brand-purple text-white shadow';
+        } else {
+          btn.className = 'track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold text-gray-400 hover:text-white';
+        }
+      });
+
+      // Render Layout Preset Cards
+      const presets = LAYOUT_PRESETS[count] || [];
+      const presetsContainer = document.getElementById('layout-preset-options');
+      presetsContainer.innerHTML = presets.map(p => `
+        <button onclick="selectLayoutPreset('${p.id}')" class="p-2.5 rounded-2xl bg-brand-bg border ${AppState.currentProject.layoutPreset === p.id ? 'border-brand-purple bg-brand-purple/10' : 'border-brand-border'} flex flex-col items-center gap-2 transition hover:border-brand-purple">
+          <div class="w-16 h-28 bg-black rounded-lg border border-brand-border relative overflow-hidden">
+            ${p.rects.map(r => `
+              <div class="absolute bg-brand-purple/40 border border-brand-purple/60 rounded-[2px]" style="left:${(r.x/720)*100}%; top:${(r.y/1280)*100}%; width:${(r.w/720)*100}%; height:${(r.h/1280)*100}%;"></div>
+            `).join('')}
+          </div>
+          <span class="text-[11px] font-semibold text-gray-200">${p.name}</span>
+        </button>
+      `).join('');
+
+      // Render Slot Cards
+      renderSlotCards();
+
+      // Draw initial canvas frame
+      drawCanvasFrame();
+    }
+
+    function selectLayoutPreset(presetId) {
+      AppState.currentProject.layoutPreset = presetId;
+      renderStudioWorkspace();
+    }
+
+    function renderSlotCards() {
+      const slotsContainer = document.getElementById('studio-slots-container');
+      const slots = AppState.currentProject.slots;
+      
+      let activeCount = 0;
+      slots.forEach(s => { if (s.url) activeCount++; });
+      document.getElementById('active-tracks-badge').textContent = `${activeCount} / ${slots.length} Filled`;
+
+      slotsContainer.innerHTML = slots.map((s, idx) => {
+        const hasMedia = !!s.url;
+        return `
+          <div class="glass-card p-3 rounded-2xl border border-brand-border space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg gradient-btn text-white font-bold text-xs flex items-center justify-center">${s.id}</span>
+                <span class="text-xs font-bold text-white">${s.title}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                ${hasMedia ? `
+                  <button onclick="toggleSlotMute(${idx})" class="p-1.5 rounded-lg ${s.muted ? 'bg-red-500/20 text-red-400' : 'bg-brand-bg text-gray-300'} text-xs font-semibold">
+                    <i class="ph-bold ${s.muted ? 'ph-speaker-slash' : 'ph-speaker-high'}"></i>
+                  </button>
+                  <button onclick="removeSlotMedia(${idx})" class="p-1.5 rounded-lg bg-brand-bg text-gray-400 hover:text-red-400 text-xs">
+                    <i class="ph-bold ph-trash"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            ${hasMedia ? `
+              <!-- Media Loaded Controls -->
+              <div class="flex items-center gap-3 bg-brand-bg/60 p-2 rounded-xl">
+                <div class="w-12 h-12 rounded-lg bg-black overflow-hidden relative shrink-0 border border-brand-border">
+                  <video src="${s.url}" class="w-full h-full object-cover"></video>
+                </div>
+                <div class="flex-1 space-y-1">
+                  <div class="flex justify-between items-center text-[10px] text-gray-400">
+                    <span>Volume</span>
+                    <span>${Math.round(s.volume * 100)}%</span>
+                  </div>
+                  <input type="range" min="0" max="2" step="0.05" value="${s.volume}" oninput="updateSlotVolume(${idx}, this.value)" class="w-full">
+                  
+                  <div class="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
+                    <span>Audio Offset</span>
+                    <span class="font-mono text-brand-purple">${s.offsetMs} ms</span>
+                  </div>
+                  <input type="range" min="-500" max="500" step="10" value="${s.offsetMs}" oninput="updateSlotOffset(${idx}, this.value)" class="w-full">
+                </div>
+              </div>
+            ` : `
+              <!-- Empty Slot Input Options -->
+              <div class="grid grid-cols-3 gap-2 pt-1">
+                <button onclick="openRecordModal(${idx})" class="py-2.5 px-2 rounded-xl bg-brand-purple/15 border border-brand-purple/30 text-brand-purple hover:bg-brand-purple/25 transition text-xs font-bold flex flex-col items-center gap-1">
+                  <i class="ph-bold ph-video-camera text-base"></i> Record
+                </button>
+                <button onclick="triggerSlotUpload(${idx})" class="py-2.5 px-2 rounded-xl bg-brand-cardLight border border-brand-border text-gray-200 hover:text-white transition text-xs font-bold flex flex-col items-center gap-1">
+                  <i class="ph-bold ph-folder-open text-base"></i> Gallery
+                </button>
+                <button onclick="openClipsPickerModal(${idx})" class="py-2.5 px-2 rounded-xl bg-brand-cardLight border border-brand-border text-gray-200 hover:text-white transition text-xs font-bold flex flex-col items-center gap-1">
+                  <i class="ph-bold ph-film-strip text-base"></i> My Clips
+                </button>
+              </div>
+            `}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleSlotMute(idx) {
+      AppState.currentProject.slots[idx].muted = !AppState.currentProject.slots[idx].muted;
+      renderSlotCards();
+    }
+
+    function removeSlotMedia(idx) {
+      const slot = AppState.currentProject.slots[idx];
+      slot.url = null;
+      slot.blob = null;
+      slot.videoEl = null;
+      renderSlotCards();
+      drawCanvasFrame();
+    }
+
+    function updateSlotVolume(idx, val) {
+      AppState.currentProject.slots[idx].volume = parseFloat(val);
+      renderSlotCards();
+    }
+
+    function updateSlotOffset(idx, val) {
+      AppState.currentProject.slots[idx].offsetMs = parseInt(val);
+      renderSlotCards();
+    }
+
+    /* ==========================================================================
+       6. WEBRTC MULTI-TRACK CAMERA RECORDING ENGINE
+       ========================================================================== */
+    async function openRecordModal(slotIdx) {
+      AppState.recording.slotIndex = slotIdx;
+      document.getElementById('rec-title').textContent = `Recording Track Slot ${slotIdx + 1}`;
+      document.getElementById('recording-modal').classList.remove('hidden');
+      document.getElementById('rec-headphone-tip').classList.toggle('hidden', slotIdx === 0);
+
+      // Reset Modal UI
+      document.getElementById('btn-rec-retake').classList.add('hidden');
+      document.getElementById('btn-rec-save').classList.add('hidden');
+      document.getElementById('btn-rec-start-stop').classList.remove('hidden');
+
+      await initRecordingStream();
+    }
+
+    async function initRecordingStream() {
+      try {
+        if (AppState.recording.stream) {
+          AppState.recording.stream.getTracks().forEach(t => t.stop());
+        }
+
+        const constraints = {
+          video: { facingMode: AppState.recording.facingMode, width: { ideal: 720 }, height: { ideal: 1280 } },
+          audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        AppState.recording.stream = stream;
+
+        const liveVideo = document.getElementById('rec-live-video');
+        liveVideo.srcObject = stream;
+
+        // Setup Mic Sensitivity Visualizer
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const micSource = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        micSource.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        AppState.recording.micInterval = setInterval(() => {
+          analyser.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          const meterBar = document.getElementById('rec-mic-meter');
+          if (meterBar) meterBar.style.height = `${Math.min(100, avg * 2)}%`;
+        }, 100);
+
+      } catch (err) {
+        showToast('Camera/Microphone permission denied or unavailable.');
+        document.getElementById('recording-modal').classList.add('hidden');
+      }
+    }
+
+    document.getElementById('btn-rec-switch-cam')?.addEventListener('click', async () => {
+      AppState.recording.facingMode = AppState.recording.facingMode === 'user' ? 'environment' : 'user';
+      await initRecordingStream();
+    });
+
+    document.getElementById('btn-rec-close')?.addEventListener('click', stopAndCloseRecordingModal);
+
+    function stopAndCloseRecordingModal() {
+      if (AppState.recording.micInterval) clearInterval(AppState.recording.micInterval);
+      if (AppState.recording.timerInterval) clearInterval(AppState.recording.timerInterval);
+      if (AppState.recording.stream) {
+        AppState.recording.stream.getTracks().forEach(t => t.stop());
+      }
+      stopRefAudioPlayback();
+      document.getElementById('recording-modal').classList.add('hidden');
+    }
+
+    // Record Start / Stop Toggle
+    document.getElementById('btn-rec-start-stop')?.addEventListener('click', () => {
+      if (AppState.recording.mediaRecorder && AppState.recording.mediaRecorder.state === 'recording') {
+        stopRecordingTrack();
+      } else {
+        startRecordingWithCountdown();
+      }
+    });
+
+    function startRecordingWithCountdown() {
+      const overlay = document.getElementById('rec-countdown-overlay');
+      const numEl = document.getElementById('rec-countdown-num');
+      overlay.classList.remove('hidden');
+
+      let count = 3;
+      numEl.textContent = count;
+
+      const countInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          numEl.textContent = count;
+        } else {
+          clearInterval(countInterval);
+          overlay.classList.add('hidden');
+          executeStartRecording();
+        }
+      }, 1000);
+    }
+
+    function executeStartRecording() {
+      AppState.recording.chunks = [];
+      const stream = AppState.recording.stream;
+
+      let mimeType = 'video/webm;codecs=vp9,opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm';
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      AppState.recording.mediaRecorder = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) AppState.recording.chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(AppState.recording.chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        
+        // Show Retake / Save buttons
+        document.getElementById('btn-rec-retake').classList.remove('hidden');
+        document.getElementById('btn-rec-save').classList.remove('hidden');
+        document.getElementById('btn-rec-start-stop').classList.add('hidden');
+
+        // Store temp recording
+        AppState.recording.tempBlob = blob;
+        AppState.recording.tempUrl = url;
+      };
+
+      mediaRecorder.start();
+      AppState.recording.startTime = Date.now();
+
+      // Start Reference Tracks Audio Playback synchronously!
+      playRefAudioForSync();
+
+      // Start Recording Timer
+      const timerEl = document.getElementById('rec-timer');
+      AppState.recording.timerInterval = setInterval(() => {
+        const elapsed = (Date.now() - AppState.recording.startTime) / 1000;
+        timerEl.textContent = formatTime(elapsed);
+      }, 100);
+
+      document.getElementById('rec-btn-icon').className = 'w-6 h-6 rounded-sm bg-red-600';
+    }
+
+    function stopRecordingTrack() {
+      if (AppState.recording.mediaRecorder) {
+        AppState.recording.mediaRecorder.stop();
+      }
+      if (AppState.recording.timerInterval) clearInterval(AppState.recording.timerInterval);
+      stopRefAudioPlayback();
+      document.getElementById('rec-btn-icon').className = 'w-6 h-6 rounded-md bg-white';
+    }
+
+    /* Synchronized Reference Audio Playback for Track 2+ */
+    function playRefAudioForSync() {
+      stopRefAudioPlayback();
+      const slots = AppState.currentProject.slots;
+      AppState.recording.refAudioNodes = [];
+
+      slots.forEach(slot => {
+        if (slot.url && !slot.muted) {
+          const audio = new Audio(slot.url);
+          audio.volume = slot.volume;
+          audio.play().catch(e => console.log('Sync audio play blocked:', e));
+          AppState.recording.refAudioNodes.push(audio);
+        }
+      });
+    }
+
+    function stopRefAudioPlayback() {
+      if (AppState.recording.refAudioNodes) {
+        AppState.recording.refAudioNodes.forEach(a => {
+          a.pause();
+          a.currentTime = 0;
+        });
+        AppState.recording.refAudioNodes = [];
+      }
+    }
+
+    document.getElementById('btn-rec-save')?.addEventListener('click', () => {
+      const slotIdx = AppState.recording.slotIndex;
+      const slot = AppState.currentProject.slots[slotIdx];
+      slot.blob = AppState.recording.tempBlob;
+      slot.url = AppState.recording.tempUrl;
+      
+      // Auto save as individual clip in My Clips Library
+      const clipObj = {
+        id: 'clip_' + Date.now(),
+        title: `Performance ${slot.id}`,
+        blob: slot.blob,
+        url: slot.url,
+        createdAt: new Date().toLocaleDateString()
+      };
+      saveClipToDB(clipObj);
+
+      stopAndCloseRecordingModal();
+      createSlotVideoElement(slot);
+      renderSlotCards();
+      showToast(`Track ${slotIdx + 1} recorded & assigned!`);
+    });
+
+    document.getElementById('btn-rec-retake')?.addEventListener('click', async () => {
+      document.getElementById('btn-rec-retake').classList.add('hidden');
+      document.getElementById('btn-rec-save').classList.add('hidden');
+      document.getElementById('btn-rec-start-stop').classList.remove('hidden');
+      await initRecordingStream();
+    });
+
+    /* ==========================================================================
+       7. GALLERY UPLOADS & CLIPS LIBRARY ASSIGNMENT
+       ========================================================================== */
+    let pendingSlotUploadIdx = null;
+
+    function triggerSlotUpload(slotIdx) {
+      pendingSlotUploadIdx = slotIdx;
+      const fileInput = document.getElementById('global-video-input');
+      fileInput.value = '';
+      fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        const slot = AppState.currentProject.slots[pendingSlotUploadIdx];
+        slot.blob = file;
+        slot.url = url;
+        createSlotVideoElement(slot);
+        renderSlotCards();
+        showToast(`Video loaded into Track ${pendingSlotUploadIdx + 1}`);
+      };
+      fileInput.click();
+    }
+
+    function triggerClipUpload() {
+      const fileInput = document.getElementById('global-video-input');
+      fileInput.value = '';
+      fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        const clipObj = {
+          id: 'clip_' + Date.now(),
+          title: file.name.split('.')[0] || 'Uploaded Clip',
+          blob: file,
+          url: url,
+          createdAt: new Date().toLocaleDateString()
+        };
+        await saveClipToDB(clipObj);
+        renderClipsGrid();
+        showToast('Clip saved to library!');
+      };
+      fileInput.click();
+    }
+
+    async function openClipsPickerModal(slotIdx) {
+      pendingSlotUploadIdx = slotIdx;
+      const modal = document.getElementById('clips-picker-modal');
+      const list = document.getElementById('clips-picker-list');
+      const clips = await getAllClipsFromDB();
+
+      if (clips.length === 0) {
+        list.innerHTML = `<p class="col-span-full text-center text-xs text-gray-400 py-6">No saved clips in library.</p>`;
+      } else {
+        list.innerHTML = clips.map(c => `
+          <div onclick="assignClipToSlot('${c.id}')" class="p-2 rounded-xl bg-brand-bg border border-brand-border hover:border-brand-purple cursor-pointer flex flex-col gap-1">
+            <div class="aspect-video bg-black rounded-lg overflow-hidden">
+              <video src="${c.url || URL.createObjectURL(c.blob)}" class="w-full h-full object-cover"></video>
+            </div>
+            <span class="text-xs font-bold text-white truncate">${c.title}</span>
+          </div>
+        `).join('');
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    async function assignClipToSlot(clipId) {
+      const clips = await getAllClipsFromDB();
+      const clip = clips.find(c => c.id === clipId);
+      if (!clip) return;
+
+      const slot = AppState.currentProject.slots[pendingSlotUploadIdx];
+      slot.blob = clip.blob;
+      slot.url = clip.url || URL.createObjectURL(clip.blob);
+      createSlotVideoElement(slot);
+
+      document.getElementById('clips-picker-modal').classList.add('hidden');
+      renderSlotCards();
+      showToast(`Clip assigned to Track ${pendingSlotUploadIdx + 1}`);
+    }
+
+    function createSlotVideoElement(slot) {
+      const video = document.createElement('video');
+      video.src = slot.url;
+      video.crossOrigin = 'anonymous';
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.muted = true; // Muted in DOM, handled by WebAudio
+      slot.videoEl = video;
+
+      video.onloadedmetadata = () => {
+        calculateMaxProjectDuration();
+        drawCanvasFrame();
+      };
+    }
+
+    function calculateMaxProjectDuration() {
+      let maxDur = 0;
+      AppState.currentProject.slots.forEach(s => {
+        if (s.videoEl && s.videoEl.duration) {
+          if (s.videoEl.duration > maxDur) maxDur = s.videoEl.duration;
+        }
+      });
+      AppState.playback.maxDuration = maxDur;
+      document.getElementById('player-time-total').textContent = formatTime(maxDur);
+    }
+
+    /* ==========================================================================
+       8. CANVAS MULTI-VIDEO RENDERING ENGINE & AUDIO MIXER
+       ========================================================================== */
+    function drawCanvasFrame() {
+      const canvas = document.getElementById('studio-canvas');
+      if (!canvas) return;
+      canvas.width = CANVAS_W;
+      canvas.height = CANVAS_H;
+      const ctx = canvas.getContext('2d');
+
+      // Clear Canvas Background
+      ctx.fillStyle = '#0a0a0c';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      const count = AppState.currentProject.trackCount;
+      const presetId = AppState.currentProject.layoutPreset;
+      const preset = (LAYOUT_PRESETS[count] || []).find(p => p.id === presetId) || LAYOUT_PRESETS[count][0];
+      const slots = AppState.currentProject.slots;
+
+      let hasAnyMedia = false;
+
+      preset.rects.forEach((rect, idx) => {
+        const slot = slots[idx];
+        ctx.save();
+
+        // Clip to slot boundary rectangle
+        ctx.beginPath();
+        ctx.rect(rect.x, rect.y, rect.w, rect.h);
+        ctx.clip();
+
+        if (slot && slot.videoEl && slot.videoEl.readyState >= 2) {
+          hasAnyMedia = true;
+          // Draw video with object-fit: cover inside target rect
+          drawVideoCover(ctx, slot.videoEl, rect.x, rect.y, rect.w, rect.h);
+        } else {
+          // Placeholder grid slot box
+          ctx.fillStyle = '#13131a';
+          ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+          ctx.strokeStyle = '#272738';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+
+          // Slot Label Number
+          ctx.fillStyle = '#8b5cf6';
+          ctx.font = 'bold 36px "Plus Jakarta Sans"';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`Track ${idx + 1}`, rect.x + rect.w / 2, rect.y + rect.h / 2);
+        }
+
+        ctx.restore();
+      });
+
+      // Watermark Overlay
+      if (document.getElementById('pref-watermark')?.checked) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = 'bold 22px "Plus Jakarta Sans"';
+        ctx.textAlign = 'right';
+        ctx.fillText('Acapella', CANVAS_W - 24, CANVAS_H - 24);
+      }
+
+      document.getElementById('canvas-empty-state').classList.toggle('hidden', hasAnyMedia);
+    }
+
+    function drawVideoCover(ctx, video, x, y, w, h) {
+      const vw = video.videoWidth || 720;
+      const vh = video.videoHeight || 1280;
+      const videoRatio = vw / vh;
+      const rectRatio = w / h;
+
+      let dw, dh, dx, dy;
+      if (videoRatio > rectRatio) {
+        dh = h;
+        dw = h * videoRatio;
+        dx = x - (dw - w) / 2;
+        dy = y;
+      } else {
+        dw = w;
+        dh = w / videoRatio;
+        dx = x;
+        dy = y - (dh - h) / 2;
+      }
+
+      ctx.drawImage(video, dx, dy, dw, dh);
+    }
+
+    /* ==========================================================================
+       9. SYNCHRONIZED MULTI-TRACK PLAYBACK & SCRUBBER
+       ========================================================================== */
+    const btnPlayToggle = document.getElementById('btn-player-toggle');
+    const scrubber = document.getElementById('player-scrubber');
+
+    btnPlayToggle?.addEventListener('click', toggleStudioPlayback);
+
+    function toggleStudioPlayback() {
+      if (AppState.playback.isPlaying) {
+        pauseStudioPlayback();
+      } else {
+        startStudioPlayback();
+      }
+    }
+
+    function startStudioPlayback() {
+      const slots = AppState.currentProject.slots;
+      const activeSlots = slots.filter(s => s.videoEl && s.url);
+      if (activeSlots.length === 0) {
+        showToast('Add video tracks before playing preview!');
+        return;
+      }
+
+      AppState.playback.isPlaying = true;
+      btnPlayToggle.innerHTML = `<i class="ph-bold ph-pause text-xl"></i>`;
+
+      // Synchronize video currentTime & start playback
+      activeSlots.forEach(s => {
+        s.videoEl.currentTime = AppState.playback.currentTime;
+        s.videoEl.volume = s.muted ? 0 : s.volume;
+        s.videoEl.play().catch(e => console.log('Playback error:', e));
+      });
+
+      renderPlaybackLoop();
+    }
+
+    function pauseStudioPlayback() {
+      AppState.playback.isPlaying = false;
+      btnPlayToggle.innerHTML = `<i class="ph-bold ph-play text-xl ml-0.5"></i>`;
+
+      AppState.currentProject.slots.forEach(s => {
+        if (s.videoEl) s.videoEl.pause();
+      });
+
+      if (AppState.playback.animFrame) {
+        cancelAnimationFrame(AppState.playback.animFrame);
+      }
+    }
+
+    function renderPlaybackLoop() {
+      if (!AppState.playback.isPlaying) return;
+
+      // Draw active video frames onto Canvas
+      drawCanvasFrame();
+
+      // Find leading active video time
+      const firstSlot = AppState.currentProject.slots.find(s => s.videoEl);
+      if (firstSlot && firstSlot.videoEl) {
+        AppState.playback.currentTime = firstSlot.videoEl.currentTime;
+        document.getElementById('player-time-current').textContent = formatTime(AppState.playback.currentTime);
+
+        if (AppState.playback.maxDuration > 0) {
+          scrubber.value = (AppState.playback.currentTime / AppState.playback.maxDuration) * 100;
+        }
+
+        // Auto loop / stop when max duration reached
+        if (AppState.playback.currentTime >= AppState.playback.maxDuration) {
+          pauseStudioPlayback();
+          AppState.playback.currentTime = 0;
+          scrubber.value = 0;
+          return;
+        }
+      }
+
+      AppState.playback.animFrame = requestAnimationFrame(renderPlaybackLoop);
+    }
+
+    scrubber?.addEventListener('input', (e) => {
+      const pct = parseFloat(e.target.value) / 100;
+      const targetTime = pct * AppState.playback.maxDuration;
+      AppState.playback.currentTime = targetTime;
+      document.getElementById('player-time-current').textContent = formatTime(targetTime);
+
+      AppState.currentProject.slots.forEach(s => {
+        if (s.videoEl) s.videoEl.currentTime = targetTime;
+      });
+
+      drawCanvasFrame();
+    });
+
+    /* ==========================================================================
+       10. 9:16 VIDEO COMPOSITION EXPORTER
+       ========================================================================== */
+    document.getElementById('btn-export-studio')?.addEventListener('click', exportStudioComposition);
+
+    async function exportStudioComposition() {
+      const activeSlots = AppState.currentProject.slots.filter(s => s.videoEl && s.url);
+      if (activeSlots.length === 0) {
+        showToast('Record or add at least one track to export!');
+        return;
+      }
+
+      pauseStudioPlayback();
+
+      const loader = document.getElementById('canvas-loader');
+      const progressText = document.getElementById('canvas-loader-progress');
+      loader.classList.remove('hidden');
+
+      // Setup WebAudio AudioContext destination stream for export
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const destNode = audioCtx.createMediaStreamDestination();
+
+      activeSlots.forEach(s => {
+        if (!s.muted && s.videoEl) {
+          const source = audioCtx.createMediaElementSource(s.videoEl);
+          const gain = audioCtx.createGain();
+          gain.gain.value = s.volume;
+          source.connect(gain);
+          gain.connect(destNode);
+        }
+      });
+
+      // Canvas Capture Stream
+      const canvas = document.getElementById('studio-canvas');
+      const canvasStream = canvas.captureStream(30);
+
+      // Combine video + audio streams
+      const combinedTracks = [
+        ...canvasStream.getVideoTracks(),
+        ...destNode.stream.getAudioTracks()
+      ];
+      const exportStream = new MediaStream(combinedTracks);
+
+      let mimeType = 'video/webm;codecs=vp9,opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+
+      const recorder = new MediaRecorder(exportStream, { mimeType });
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+      recorder.onstop = () => {
+        const exportedBlob = new Blob(chunks, { type: 'video/mp4' });
+        const exportUrl = URL.createObjectURL(exportedBlob);
+
+        loader.classList.add('hidden');
+
+        // Show Export Ready Modal
+        const modal = document.getElementById('export-modal');
+        const previewVid = document.getElementById('export-preview-video');
+        const downloadBtn = document.getElementById('btn-export-download');
+
+        previewVid.src = exportUrl;
+        downloadBtn.href = exportUrl;
+        modal.classList.remove('hidden');
+      };
+
+      // Reset videos to beginning for recording pass
+      activeSlots.forEach(s => {
+        s.videoEl.currentTime = 0;
+        s.videoEl.play();
+      });
+
+      recorder.start();
+
+      let exportTime = 0;
+      const exportDuration = AppState.playback.maxDuration || 5;
+
+      const exportInterval = setInterval(() => {
+        exportTime += 0.1;
+        const pct = Math.min(100, Math.round((exportTime / exportDuration) * 100));
+        progressText.textContent = `${pct}%`;
+
+        drawCanvasFrame();
+
+        if (exportTime >= exportDuration) {
+          clearInterval(exportInterval);
+          activeSlots.forEach(s => s.videoEl.pause());
+          recorder.stop();
+        }
+      }, 100);
+    }
+
+    document.getElementById('btn-export-save-project')?.addEventListener('click', async () => {
+      const proj = AppState.currentProject;
+      proj.updatedAt = new Date().toLocaleDateString();
+      await saveProjectToDB(proj);
+      showToast('Project saved to library!');
+      document.getElementById('export-modal').classList.add('hidden');
+    });
+
+    /* ==========================================================================
+       11. MEDIA LIBRARIES & RECENT PROJECTS RENDERERS
+       ========================================================================== */
+    async function renderClipsGrid() {
+      const container = document.getElementById('clips-library-grid');
+      const clips = await getAllClipsFromDB();
+
+      if (clips.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center p-8 bg-brand-card/50 rounded-2xl border border-dashed border-brand-border text-xs text-gray-400">No clips saved yet. Record or upload clips to reuse them anytime!</div>`;
+        return;
+      }
+
+      container.innerHTML = clips.map(c => `
+        <div class="glass-card p-2.5 rounded-2xl border border-brand-border space-y-2 group">
+          <div class="aspect-video bg-black rounded-xl overflow-hidden relative">
+            <video src="${c.url || URL.createObjectURL(c.blob)}" class="w-full h-full object-cover"></video>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white truncate">${c.title}</span>
+            <button onclick="removeClip('${c.id}')" class="text-gray-400 hover:text-red-400 p-1 text-xs">
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function removeClip(id) {
+      await deleteClipFromDB(id);
+      renderClipsGrid();
+      showToast('Clip deleted');
+    }
+
+    async function renderProjectsGrid() {
+      const container = document.getElementById('projects-library-grid');
+      const projects = await getAllProjectsFromDB();
+
+      if (projects.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center p-8 bg-brand-card/50 rounded-2xl border border-dashed border-brand-border text-xs text-gray-400">No saved projects found.</div>`;
+        return;
+      }
+
+      container.innerHTML = projects.map(p => `
+        <div class="glass-card p-4 rounded-2xl border border-brand-border space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">${p.title}</h4>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-purple/20 text-brand-purple border border-brand-purple/30">${p.trackCount} Tracks</span>
+          </div>
+          <p class="text-xs text-gray-400">Last updated: ${p.updatedAt || 'Recently'}</p>
+          <div class="flex items-center gap-2 pt-1">
+            <button onclick="loadProject('${p.id}')" class="flex-1 py-2 rounded-xl gradient-btn text-white text-xs font-bold">Open Project</button>
+            <button onclick="removeProject('${p.id}')" class="p-2 rounded-xl bg-brand-bg text-gray-400 hover:text-red-400 text-xs"><i class="ph-bold ph-trash"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function renderHomeProjects() {
+      const container = document.getElementById('home-recent-projects');
+      const projects = await getAllProjectsFromDB();
+
+      if (projects.length === 0) return;
+
+      container.innerHTML = projects.slice(0, 2).map(p => `
+        <div onclick="loadProject('${p.id}')" class="p-3 rounded-2xl bg-brand-card border border-brand-border hover:border-brand-purple cursor-pointer flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl gradient-btn flex items-center justify-center text-white font-bold text-sm">${p.trackCount}</div>
+            <div>
+              <h4 class="text-xs font-bold text-white">${p.title}</h4>
+              <p class="text-[10px] text-gray-400">${p.updatedAt || 'Recent'}</p>
+            </div>
+          </div>
+          <i class="ph-bold ph-caret-right text-gray-400"></i>
+        </div>
+      `).join('');
+    }
+
+    async function loadProject(id) {
+      const projects = await getAllProjectsFromDB();
+      const proj = projects.find(p => p.id === id);
+      if (!proj) return;
+
+      AppState.currentProject = proj;
+      navTo('create');
+      showToast('Project loaded');
+    }
+
+    async function removeProject(id) {
+      await deleteProjectFromDB(id);
+      renderProjectsGrid();
+      renderHomeProjects();
+      showToast('Project removed');
+    }
+
+    /* ==========================================================================
+       12. HARDWARE DIAGNOSTICS & HELPERS
+       ========================================================================== */
+    document.getElementById('btn-test-hardware')?.addEventListener('click', async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const video = document.getElementById('diagnostic-preview');
+        const placeholder = document.getElementById('diagnostic-placeholder');
+
+        video.srcObject = stream;
+        video.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+
+        // Mic Visualizer
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        setInterval(() => {
+          analyser.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          const pct = Math.min(100, Math.round(avg * 2));
+          document.getElementById('diagnostic-mic-bar').style.width = `${pct}%`;
+          document.getElementById('diagnostic-mic-val').textContent = `${pct}%`;
+        }, 100);
+
+        showToast('Camera and Microphone test active!');
+      } catch (e) {
+        showToast('Diagnostic failed: Permissions denied.');
+      }
+    });
+
+    document.getElementById('pref-latency')?.addEventListener('input', (e) => {
+      document.getElementById('pref-latency-val').textContent = `${e.target.value} ms`;
+      AppState.currentProject.latencyMs = parseInt(e.target.value);
+    });
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      const ms = Math.floor((seconds % 1) * 10);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms}`;
+    }
+
+    /* Initialize default app state on window load */
+    window.onload = async () => {
+      await initDB();
+      startNewProjectWithTracks(4);
+      navTo('home');
+    };
+  </script>
+</body>
+</html>
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left / Center Section: Video Canvas Grid & Live Recorder -->
+    <section class="lg:col-span-8 flex flex-col gap-4">
+      
+      <!-- Backing Track Bar Header -->
+      <div id="backing-track-banner" class="bg-gradient-to-r from-purple-900/40 via-zinc-900 to-rose-900/40 border border-purple-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-md">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-purple-600/30 text-purple-400 border border-purple-500/40 flex items-center justify-center text-xl shrink-0">
+            <i class="fas me-0 fa-music"></i>
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-wider text-purple-400 font-semibold flex items-center gap-1.5">
+              <span>Backing Track / Minus One</span>
+              <span id="backing-status-badge" class="px-2 py-0.5 rounded-full text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">None</span>
+            </div>
+            <div id="backing-track-name" class="text-sm font-medium text-zinc-200 truncate max-w-[220px] sm:max-w-md">
+              No Backing Track Loaded
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input type="file" id="backing-file-input" accept="audio/*,video/*" class="hidden" onchange="handleBackingTrackUpload(event)">
+          <button onclick="document.getElementById('backing-file-input').click()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fas fa-file-audio"></i>
+            <span id="backing-btn-label">Choose Track</span>
+          </button>
+          <button id="remove-backing-btn" onclick="removeBackingTrack()" class="hidden bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800/50 text-xs px-2.5 py-2 rounded-lg transition" title="Remove Backing Track">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Layout Selector & Tools -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-zinc-900/80 p-3 rounded-xl border border-zinc-800">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-zinc-400 font-medium">Layout:</span>
+          <button onclick="setTrackLayout('1-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300">1</button>
+          <button onclick="setTrackLayout('2-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300 font-semibold bg-zinc-800">2 Split</button>
+          <button onclick="setTrackLayout('3-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300">3 Trio</button>
+          <button onclick="setTrackLayout('4-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300">4 Grid</button>
+          <button onclick="setTrackLayout('6-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300">6 Grid</button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="btn-play-all" onclick="toggleMultiTrackPlayback()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-lg shadow-rose-950/40 transition">
+            <i class="fas fa-play" id="play-all-icon"></i>
+            <span id="play-all-text">Preview All</span>
+          </button>
+          <button onclick="exportCollageVideo()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 text-xs font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fas fa-download"></i> Export Video
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Video Collage Display Area -->
+      <div id="video-grid-container" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-3 min-h-[450px] flex items-center justify-center relative overflow-hidden shadow-2xl">
+        <!-- Dynamic Grid Content injected via JS -->
+      </div>
+
+      <!-- Live Recording Progress & Backing Sync HUD -->
+      <div id="recording-hud" class="hidden bg-rose-950/80 border border-rose-800/80 rounded-xl p-4 flex flex-col gap-2">
+        <div class="flex items-center justify-between text-xs text-rose-200 font-medium">
+          <span class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 recording-pulse"></span>
+            Recording Track <span id="hud-track-num">1</span>
+          </span>
+          <span id="hud-timer" class="font-mono text-sm font-bold text-rose-400">00:00 / 00:00</span>
+        </div>
+        <div class="w-full bg-zinc-950/80 rounded-full h-2.5 overflow-hidden border border-rose-900/50">
+          <div id="hud-progress-bar" class="bg-gradient-to-r from-rose-600 to-purple-500 h-full w-0 transition-all duration-200"></div>
+        </div>
+        <div id="hud-backing-info" class="text-[11px] text-zinc-400 flex justify-between items-center">
+          <span><i class="fas fa-music text-purple-400 me-1"></i> Backing track auto-stop enabled</span>
+          <button onclick="stopRecording()" class="text-rose-400 hover:text-rose-300 font-semibold underline">Stop Early</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Sidebar: Audio Mixer & Track Settings -->
+    <section class="lg:col-span-4 flex flex-col gap-4">
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col gap-4 shadow-xl">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <h2 class="text-sm font-bold text-zinc-200 flex items-center gap-2">
+            <i class="fas fa-sliders-h text-rose-500"></i> Audio & Vocal Mixer
+          </h2>
+          <span class="text-[11px] text-zinc-500">Sync & Volumes</span>
+        </div>
+
+        <!-- Backing Track Mixer Control Slot -->
+        <div id="backing-mixer-card" class="bg-purple-950/30 border border-purple-800/40 rounded-xl p-3 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-xs font-semibold text-purple-300">
+              <i class="fas fa-compact-disc text-purple-400"></i>
+              <span>Backing Track Volume</span>
+            </div>
+            <button id="backing-mute-btn" onclick="toggleBackingMute()" class="text-zinc-400 hover:text-white text-xs p-1">
+              <i class="fas fa-volume-up" id="backing-mute-icon"></i>
+            </button>
+          </div>
+          <div class="flex items-center gap-3">
+            <input type="range" id="backing-vol-slider" min="0" max="1" step="0.02" value="0.8" oninput="updateBackingVolume(this.value)" class="w-full accent-purple-500 bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+            <span id="backing-vol-val" class="text-[11px] font-mono text-purple-300 w-8 text-right">80%</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Vocal / Instrument Track Volume List -->
+        <div id="mixer-tracks-container" class="flex flex-col gap-3">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Handle Backing Track Audio Upload
+    function handleBackingTrackUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const fileURL = URL.createObjectURL(file);
+      const audio = new Audio(fileURL);
+
+      audio.onloadedmetadata = () => {
+        backingTrack = {
+          blob: file,
+          url: fileURL,
+          name: file.name,
+          duration: audio.duration,
+          volume: 0.8,
+          muted: false
+        };
+
+        // Update UI
+        document.getElementById('backing-track-name').textContent = file.name;
+        document.getElementById('backing-status-badge').textContent = formatTime(audio.duration);
+        document.getElementById('backing-status-badge').className = "px-2 py-0.5 rounded-full text-[10px] bg-purple-900/60 text-purple-300 border border-purple-700/50";
+        document.getElementById('backing-btn-label').textContent = "Change";
+        document.getElementById('remove-backing-btn').classList.remove('hidden');
+      };
+
+      audio.onerror = () => {
+        alert("Failed to load backing track audio file. Please choose a valid audio or video file.");
+      };
+    }
+
+    // Remove Backing Track
+    function removeBackingTrack() {
+      if (backingTrack && backingTrack.url) {
+        URL.revokeObjectURL(backingTrack.url);
+      }
+      backingTrack = null;
+
+      document.getElementById('backing-track-name').textContent = "No Backing Track Loaded";
+      document.getElementById('backing-status-badge').textContent = "None";
+      document.getElementById('backing-status-badge').className = "px-2 py-0.5 rounded-full text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700";
+      document.getElementById('backing-btn-label').textContent = "Choose Track";
+      document.getElementById('remove-backing-btn').classList.add('hidden');
+      document.getElementById('backing-file-input').value = "";
+    }
+
+    // Toggle Backing Mute
+    function toggleBackingMute() {
+      if (!backingTrack) return;
+      backingTrack.muted = !backingTrack.muted;
+      const icon = document.getElementById('backing-mute-icon');
+      if (backingTrack.muted) {
+        icon.className = "fas fa-volume-mute text-rose-400";
+      } else {
+        icon.className = "fas fa-volume-up text-purple-400";
+      }
+    }
+
+    // Update Backing Volume
+    function updateBackingVolume(val) {
+      if (backingTrack) {
+        backingTrack.volume = parseFloat(val);
+      }
+      document.getElementById('backing-vol-val').textContent = `${Math.round(val * 100)}%`;
+    }
+
+    let backingAudioElement = null;
+
+    async function startRecordingTrack(trackIndex) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        recordingTrackIndex = trackIndex;
+        recordStream = stream;
+
+        // Show live video feedback in target grid cell
+        const videoElem = document.getElementById(`video-slot-${trackIndex}`);
+        if (videoElem) {
+          videoElem.srcObject = stream;
+          videoElem.muted = true;
+          videoElem.play();
+        }
+
+        // Show HUD
+        document.getElementById('recording-hud').classList.remove('hidden');
+        document.getElementById('hud-track-num').textContent = trackIndex + 1;
+
+        // Play backing track and other reference tracks during recording
+        let startTime = Date.now();
+        let targetDuration = backingTrack ? backingTrack.duration : null;
+
+        if (backingTrack) {
+          if (backingAudioElement) backingAudioElement.pause();
+          backingAudioElement = new Audio(backingTrack.url);
+          backingAudioElement.volume = backingTrack.muted ? 0 : backingTrack.volume;
+          backingAudioElement.currentTime = 0;
+          backingAudioElement.play();
+        }
+
+        // Setup MediaRecorder
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          
+          tracks[trackIndex] = {
+            id: Date.now(),
+            blob: blob,
+            url: url,
+            volume: 1.0,
+            muted: false
+          };
+
+          // Stop live stream tracks
+          if (recordStream) {
+            recordStream.getTracks().forEach(t => t.stop());
+          }
+          if (backingAudioElement) {
+            backingAudioElement.pause();
+            backingAudioElement = null;
+          }
+
+          document.getElementById('recording-hud').classList.add('hidden');
+          isRecording = false;
+          clearInterval(recordTimerInterval);
+
+          renderGrid();
+          renderMixerControls();
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+
+        // Live recording timer & Auto-stop logic
+        recordTimerInterval = setInterval(() => {
+          const elapsed = (Date.now() - startTime) / 1000;
+          
+          if (targetDuration) {
+            document.getElementById('hud-timer').textContent = `${formatTime(elapsed)} / ${formatTime(targetDuration)}`;
+            const pct = Math.min(100, (elapsed / targetDuration) * 100);
+            document.getElementById('hud-progress-bar').style.width = `${pct}%`;
+
+            // AUTO-STOP when backing track finishes!
+            if (elapsed >= targetDuration || (backingAudioElement && backingAudioElement.ended)) {
+              stopRecording();
+            }
+          } else {
+            document.getElementById('hud-timer').textContent = formatTime(elapsed);
+            document.getElementById('hud-progress-bar').style.width = `100%`;
+          }
+        }, 100);
+
+      } catch (err) {
+        alert("Camera and Microphone access are required to record tracks: " + err.message);
+      }
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+      }
+    }
+
+    function toggleMultiTrackPlayback() {
+      if (isPlayingMultiTrack) {
+        stopAllPlayback();
+        return;
+      }
+
+      activePlaybackAudioElements = [];
+      let maxDuration = 0;
+
+      // Prepare backing track playback
+      if (backingTrack && !backingTrack.muted) {
+        const bgAudio = new Audio(backingTrack.url);
+        bgAudio.volume = backingTrack.volume;
+        activePlaybackAudioElements.push(bgAudio);
+        if (backingTrack.duration > maxDuration) maxDuration = backingTrack.duration;
+      }
+
+      // Prepare vocal/video track playback
+      tracks.forEach((track, idx) => {
+        if (track && track.url) {
+          const videoElem = document.getElementById(`video-slot-${idx}`);
+          if (videoElem) {
+            videoElem.currentTime = 0;
+            videoElem.volume = track.muted ? 0 : track.volume;
+            videoElem.play();
+          }
+        }
+      });
+
+      activePlaybackAudioElements.forEach(aud => aud.play());
+      isPlayingMultiTrack = true;
+
+      document.getElementById('play-all-icon').className = "fas fa-stop";
+      document.getElementById('play-all-text').textContent = "Stop Preview";
+    }
+
+    function stopAllPlayback() {
+      activePlaybackAudioElements.forEach(aud => {
+        aud.pause();
+        aud.currentTime = 0;
+      });
+      activePlaybackAudioElements = [];
+
+      tracks.forEach((track, idx) => {
+        const videoElem = document.getElementById(`video-slot-${idx}`);
+        if (videoElem) {
+          videoElem.pause();
+          videoElem.currentTime = 0;
+        }
+      });
+
+      isPlayingMultiTrack = false;
+      document.getElementById('play-all-icon').className = "fas fa-play";
+      document.getElementById('play-all-text').textContent = "Preview All";
+    }
+
+    // Window Init
+    window.onload = function() {
+      initDB();
+      setTrackLayout('2-grid');
+    };
+  </script>
+</body>
+</html>
