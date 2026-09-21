@@ -45,36 +45,7 @@
 
   <style>
     body {
-      font-family: 'Inter', sans-serif;
-    }
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #18181b;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #3f3f46;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #52525b;
-    }
-    /* Pulse Glow Animation */
-    @keyframes rec-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
-    .recording-pulse {
-      animation: rec-pulse 1.8s infinite;
-    }
-  </style>
-</head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col selection:bg-rose-500 selection:text-white">
-
+      font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: #0a0a0c;
       color: #f3f4f6;
       user-select: none;
@@ -152,68 +123,61 @@
 <body class="flex flex-col h-screen overflow-hidden antialiased">
 
   <script>
-    // Application State Management
-    let currentLayout = '2-grid'; // '1-grid', '2-grid', '3-grid', '4-grid', '6-grid'
-    let currentAspect = '9:16';  // '9:16', '16:9', '1:1'
-    let tracks = [];             // Array of track objects: { id, blob, url, volume, muted, audioDelay }
-    let backingTrack = null;     // Backing track object: { blob, url, name, duration, volume, muted }
-    let maxTracks = 2;
-    let recordingTrackIndex = null;
-    let isRecording = false;
-    let mediaRecorder = null;
-    let recordedChunks = [];
-    let recordStream = null;
-    let countdownInterval = null;
-    let recordTimerInterval = null;
-    let activePlaybackAudioElements = [];
-    let isPlayingMultiTrack = false;
-
-    // Database Initialization (IndexedDB for saving local recordings)
-    const DB_NAME = 'AcapellaStudioDB';
-    const DB_VERSION = 1;
-    let db = null;
-
-    function initDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onupgradeneeded = (e) => {
-          const database = e.target.result;
-          if (!database.objectStoreNames.contains('projects')) {
-            database.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+    /* Dynamic Web App Manifest Injection */
+    (function injectManifest() {
+      const manifest = {
+        name: "Acapella Video Creator",
+        short_name: "Acapella",
+        description: "Synchronized acapella music video collage creator",
+        start_url: "./",
+        display: "standalone",
+        background_color: "#0a0a0c",
+        theme_color: "#0a0a0c",
+        orientation: "portrait",
+        icons: [
+          {
+            src: "https://placehold.co/192x192/8b5cf6/ffffff?text=Acapella",
+            sizes: "192x192",
+            type: "image/png"
+          },
+          {
+            src: "https://placehold.co/512x512/ec4899/ffffff?text=Acapella",
+            sizes: "512x512",
+            type: "image/png"
           }
-        };
-        request.onsuccess = (e) => {
-          db = e.target.result;
-          resolve(db);
-        };
-        request.onerror = (e) => reject(e);
+        ]
+      };
+      const stringManifest = JSON.stringify(manifest);
+      const blob = new Blob([stringManifest], { type: 'application/json' });
+      const manifestURL = URL.createObjectURL(blob);
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = manifestURL;
+      document.head.appendChild(link);
+    })();
+
+    /* Service Worker Blob Registration for PWA caching */
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swCode = `
+          const CACHE_NAME = 'acapella-v1';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            // Network first with fallback to cache
+            e.respondWith(
+              fetch(e.request).catch(() => caches.match(e.request))
+            );
+          });
+        `;
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration skipped:', err));
       });
-    }
-
-    function formatTime(seconds) {
-      if (isNaN(seconds) || seconds < 0) return '00:00';
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    // Initialize layout slot counts
-    function setTrackLayout(layout) {
-      currentLayout = layout;
-      switch(layout) {
-        case '1-grid': maxTracks = 1; break;
-        case '2-grid': maxTracks = 2; break;
-        case '3-grid': maxTracks = 3; break;
-        case '4-grid': maxTracks = 4; break;
-        case '6-grid': maxTracks = 6; break;
-        default: maxTracks = 2;
-      }
-      // Trim excess tracks if layout reduced
-      if (tracks.length > maxTracks) {
-        tracks = tracks.slice(0, maxTracks);
-      }
-      renderGrid();
-      renderMixerControls();
     }
   </script>
 
@@ -1974,354 +1938,6 @@
       await initDB();
       startNewProjectWithTracks(4);
       navTo('home');
-    };
-  </script>
-</body>
-</html>
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-    <!-- Left / Center Section: Video Canvas Grid & Live Recorder -->
-    <section class="lg:col-span-8 flex flex-col gap-4">
-      
-      <!-- Backing Track Bar Header -->
-      <div id="backing-track-banner" class="bg-gradient-to-r from-purple-900/40 via-zinc-900 to-rose-900/40 border border-purple-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-md">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-purple-600/30 text-purple-400 border border-purple-500/40 flex items-center justify-center text-xl shrink-0">
-            <i class="fas me-0 fa-music"></i>
-          </div>
-          <div>
-            <div class="text-xs uppercase tracking-wider text-purple-400 font-semibold flex items-center gap-1.5">
-              <span>Backing Track / Minus One</span>
-              <span id="backing-status-badge" class="px-2 py-0.5 rounded-full text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">None</span>
-            </div>
-            <div id="backing-track-name" class="text-sm font-medium text-zinc-200 truncate max-w-[220px] sm:max-w-md">
-              No Backing Track Loaded
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <input type="file" id="backing-file-input" accept="audio/*,video/*" class="hidden" onchange="handleBackingTrackUpload(event)">
-          <button onclick="document.getElementById('backing-file-input').click()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
-            <i class="fas fa-file-audio"></i>
-            <span id="backing-btn-label">Choose Track</span>
-          </button>
-          <button id="remove-backing-btn" onclick="removeBackingTrack()" class="hidden bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800/50 text-xs px-2.5 py-2 rounded-lg transition" title="Remove Backing Track">
-            <i class="fas fa-trash"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Layout Selector & Tools -->
-      <div class="flex flex-wrap items-center justify-between gap-3 bg-zinc-900/80 p-3 rounded-xl border border-zinc-800">
-        <div class="flex items-center gap-2">
-          <span class="text-xs text-zinc-400 font-medium">Layout:</span>
-          <button onclick="setTrackLayout('1-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300">1</button>
-          <button onclick="setTrackLayout('2-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300 font-semibold bg-zinc-800">2 Split</button>
-          <button onclick="setTrackLayout('3-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300">3 Trio</button>
-          <button onclick="setTrackLayout('4-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300">4 Grid</button>
-          <button onclick="setTrackLayout('6-grid')" class="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:bg-zinc-800 text-zinc-300">6 Grid</button>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button id="btn-play-all" onclick="toggleMultiTrackPlayback()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-lg shadow-rose-950/40 transition">
-            <i class="fas fa-play" id="play-all-icon"></i>
-            <span id="play-all-text">Preview All</span>
-          </button>
-          <button onclick="exportCollageVideo()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 text-xs font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
-            <i class="fas fa-download"></i> Export Video
-          </button>
-        </div>
-      </div>
-
-      <!-- Main Video Collage Display Area -->
-      <div id="video-grid-container" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-3 min-h-[450px] flex items-center justify-center relative overflow-hidden shadow-2xl">
-        <!-- Dynamic Grid Content injected via JS -->
-      </div>
-
-      <!-- Live Recording Progress & Backing Sync HUD -->
-      <div id="recording-hud" class="hidden bg-rose-950/80 border border-rose-800/80 rounded-xl p-4 flex flex-col gap-2">
-        <div class="flex items-center justify-between text-xs text-rose-200 font-medium">
-          <span class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 recording-pulse"></span>
-            Recording Track <span id="hud-track-num">1</span>
-          </span>
-          <span id="hud-timer" class="font-mono text-sm font-bold text-rose-400">00:00 / 00:00</span>
-        </div>
-        <div class="w-full bg-zinc-950/80 rounded-full h-2.5 overflow-hidden border border-rose-900/50">
-          <div id="hud-progress-bar" class="bg-gradient-to-r from-rose-600 to-purple-500 h-full w-0 transition-all duration-200"></div>
-        </div>
-        <div id="hud-backing-info" class="text-[11px] text-zinc-400 flex justify-between items-center">
-          <span><i class="fas fa-music text-purple-400 me-1"></i> Backing track auto-stop enabled</span>
-          <button onclick="stopRecording()" class="text-rose-400 hover:text-rose-300 font-semibold underline">Stop Early</button>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- Right Sidebar: Audio Mixer & Track Settings -->
-    <section class="lg:col-span-4 flex flex-col gap-4">
-      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col gap-4 shadow-xl">
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
-          <h2 class="text-sm font-bold text-zinc-200 flex items-center gap-2">
-            <i class="fas fa-sliders-h text-rose-500"></i> Audio & Vocal Mixer
-          </h2>
-          <span class="text-[11px] text-zinc-500">Sync & Volumes</span>
-        </div>
-
-        <!-- Backing Track Mixer Control Slot -->
-        <div id="backing-mixer-card" class="bg-purple-950/30 border border-purple-800/40 rounded-xl p-3 flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 text-xs font-semibold text-purple-300">
-              <i class="fas fa-compact-disc text-purple-400"></i>
-              <span>Backing Track Volume</span>
-            </div>
-            <button id="backing-mute-btn" onclick="toggleBackingMute()" class="text-zinc-400 hover:text-white text-xs p-1">
-              <i class="fas fa-volume-up" id="backing-mute-icon"></i>
-            </button>
-          </div>
-          <div class="flex items-center gap-3">
-            <input type="range" id="backing-vol-slider" min="0" max="1" step="0.02" value="0.8" oninput="updateBackingVolume(this.value)" class="w-full accent-purple-500 bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer">
-            <span id="backing-vol-val" class="text-[11px] font-mono text-purple-300 w-8 text-right">80%</span>
-          </div>
-        </div>
-
-        <!-- Dynamic Vocal / Instrument Track Volume List -->
-        <div id="mixer-tracks-container" class="flex flex-col gap-3">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    // Handle Backing Track Audio Upload
-    function handleBackingTrackUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const fileURL = URL.createObjectURL(file);
-      const audio = new Audio(fileURL);
-
-      audio.onloadedmetadata = () => {
-        backingTrack = {
-          blob: file,
-          url: fileURL,
-          name: file.name,
-          duration: audio.duration,
-          volume: 0.8,
-          muted: false
-        };
-
-        // Update UI
-        document.getElementById('backing-track-name').textContent = file.name;
-        document.getElementById('backing-status-badge').textContent = formatTime(audio.duration);
-        document.getElementById('backing-status-badge').className = "px-2 py-0.5 rounded-full text-[10px] bg-purple-900/60 text-purple-300 border border-purple-700/50";
-        document.getElementById('backing-btn-label').textContent = "Change";
-        document.getElementById('remove-backing-btn').classList.remove('hidden');
-      };
-
-      audio.onerror = () => {
-        alert("Failed to load backing track audio file. Please choose a valid audio or video file.");
-      };
-    }
-
-    // Remove Backing Track
-    function removeBackingTrack() {
-      if (backingTrack && backingTrack.url) {
-        URL.revokeObjectURL(backingTrack.url);
-      }
-      backingTrack = null;
-
-      document.getElementById('backing-track-name').textContent = "No Backing Track Loaded";
-      document.getElementById('backing-status-badge').textContent = "None";
-      document.getElementById('backing-status-badge').className = "px-2 py-0.5 rounded-full text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700";
-      document.getElementById('backing-btn-label').textContent = "Choose Track";
-      document.getElementById('remove-backing-btn').classList.add('hidden');
-      document.getElementById('backing-file-input').value = "";
-    }
-
-    // Toggle Backing Mute
-    function toggleBackingMute() {
-      if (!backingTrack) return;
-      backingTrack.muted = !backingTrack.muted;
-      const icon = document.getElementById('backing-mute-icon');
-      if (backingTrack.muted) {
-        icon.className = "fas fa-volume-mute text-rose-400";
-      } else {
-        icon.className = "fas fa-volume-up text-purple-400";
-      }
-    }
-
-    // Update Backing Volume
-    function updateBackingVolume(val) {
-      if (backingTrack) {
-        backingTrack.volume = parseFloat(val);
-      }
-      document.getElementById('backing-vol-val').textContent = `${Math.round(val * 100)}%`;
-    }
-
-    let backingAudioElement = null;
-
-    async function startRecordingTrack(trackIndex) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        recordingTrackIndex = trackIndex;
-        recordStream = stream;
-
-        // Show live video feedback in target grid cell
-        const videoElem = document.getElementById(`video-slot-${trackIndex}`);
-        if (videoElem) {
-          videoElem.srcObject = stream;
-          videoElem.muted = true;
-          videoElem.play();
-        }
-
-        // Show HUD
-        document.getElementById('recording-hud').classList.remove('hidden');
-        document.getElementById('hud-track-num').textContent = trackIndex + 1;
-
-        // Play backing track and other reference tracks during recording
-        let startTime = Date.now();
-        let targetDuration = backingTrack ? backingTrack.duration : null;
-
-        if (backingTrack) {
-          if (backingAudioElement) backingAudioElement.pause();
-          backingAudioElement = new Audio(backingTrack.url);
-          backingAudioElement.volume = backingTrack.muted ? 0 : backingTrack.volume;
-          backingAudioElement.currentTime = 0;
-          backingAudioElement.play();
-        }
-
-        // Setup MediaRecorder
-        recordedChunks = [];
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) recordedChunks.push(e.data);
-        };
-
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(recordedChunks, { type: 'video/webm' });
-          const url = URL.createObjectURL(blob);
-          
-          tracks[trackIndex] = {
-            id: Date.now(),
-            blob: blob,
-            url: url,
-            volume: 1.0,
-            muted: false
-          };
-
-          // Stop live stream tracks
-          if (recordStream) {
-            recordStream.getTracks().forEach(t => t.stop());
-          }
-          if (backingAudioElement) {
-            backingAudioElement.pause();
-            backingAudioElement = null;
-          }
-
-          document.getElementById('recording-hud').classList.add('hidden');
-          isRecording = false;
-          clearInterval(recordTimerInterval);
-
-          renderGrid();
-          renderMixerControls();
-        };
-
-        mediaRecorder.start();
-        isRecording = true;
-
-        // Live recording timer & Auto-stop logic
-        recordTimerInterval = setInterval(() => {
-          const elapsed = (Date.now() - startTime) / 1000;
-          
-          if (targetDuration) {
-            document.getElementById('hud-timer').textContent = `${formatTime(elapsed)} / ${formatTime(targetDuration)}`;
-            const pct = Math.min(100, (elapsed / targetDuration) * 100);
-            document.getElementById('hud-progress-bar').style.width = `${pct}%`;
-
-            // AUTO-STOP when backing track finishes!
-            if (elapsed >= targetDuration || (backingAudioElement && backingAudioElement.ended)) {
-              stopRecording();
-            }
-          } else {
-            document.getElementById('hud-timer').textContent = formatTime(elapsed);
-            document.getElementById('hud-progress-bar').style.width = `100%`;
-          }
-        }, 100);
-
-      } catch (err) {
-        alert("Camera and Microphone access are required to record tracks: " + err.message);
-      }
-    }
-
-    function stopRecording() {
-      if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-      }
-    }
-
-    function toggleMultiTrackPlayback() {
-      if (isPlayingMultiTrack) {
-        stopAllPlayback();
-        return;
-      }
-
-      activePlaybackAudioElements = [];
-      let maxDuration = 0;
-
-      // Prepare backing track playback
-      if (backingTrack && !backingTrack.muted) {
-        const bgAudio = new Audio(backingTrack.url);
-        bgAudio.volume = backingTrack.volume;
-        activePlaybackAudioElements.push(bgAudio);
-        if (backingTrack.duration > maxDuration) maxDuration = backingTrack.duration;
-      }
-
-      // Prepare vocal/video track playback
-      tracks.forEach((track, idx) => {
-        if (track && track.url) {
-          const videoElem = document.getElementById(`video-slot-${idx}`);
-          if (videoElem) {
-            videoElem.currentTime = 0;
-            videoElem.volume = track.muted ? 0 : track.volume;
-            videoElem.play();
-          }
-        }
-      });
-
-      activePlaybackAudioElements.forEach(aud => aud.play());
-      isPlayingMultiTrack = true;
-
-      document.getElementById('play-all-icon').className = "fas fa-stop";
-      document.getElementById('play-all-text').textContent = "Stop Preview";
-    }
-
-    function stopAllPlayback() {
-      activePlaybackAudioElements.forEach(aud => {
-        aud.pause();
-        aud.currentTime = 0;
-      });
-      activePlaybackAudioElements = [];
-
-      tracks.forEach((track, idx) => {
-        const videoElem = document.getElementById(`video-slot-${idx}`);
-        if (videoElem) {
-          videoElem.pause();
-          videoElem.currentTime = 0;
-        }
-      });
-
-      isPlayingMultiTrack = false;
-      document.getElementById('play-all-icon').className = "fas fa-play";
-      document.getElementById('play-all-text').textContent = "Preview All";
-    }
-
-    // Window Init
-    window.onload = function() {
-      initDB();
-      setTrackLayout('2-grid');
     };
   </script>
 </body>
