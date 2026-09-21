@@ -610,25 +610,30 @@
       <span id="rec-countdown-num" class="text-8xl font-black text-brand-pink animate-ping">3</span>
     </div>
 
-    <!-- Center Camera Preview & Mic Bar -->
-    <div class="relative flex-1 my-3 rounded-3xl overflow-hidden bg-brand-bg border border-brand-border/80 flex items-center justify-center">
-      <video id="rec-live-video" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
+    <!-- Center: live 9:16 collage preview (your camera in its slot + the other tracks) -->
+    <div class="relative flex-1 min-h-0 my-3 flex items-center justify-center">
+      <div class="relative h-full max-w-full aspect-9/16 rounded-3xl overflow-hidden bg-black border border-brand-border/80">
+        <canvas id="rec-canvas" class="w-full h-full object-contain bg-black"></canvas>
 
-      <!-- Headphone Recommendation Banner Overlay -->
-      <div id="rec-headphone-tip" class="absolute top-3 left-3 right-3 p-2.5 rounded-2xl glass-card border border-brand-purple/40 text-xs text-gray-200 flex items-center gap-2 z-10">
-        <i class="ph-bold ph-headphones text-brand-pink text-lg shrink-0"></i>
-        <span id="rec-headphone-tip-text"><strong>Pro Tip:</strong> Use headphones to hear existing reference tracks clearly!</span>
-      </div>
+        <!-- Camera source for the canvas (kept in the DOM so it keeps decoding) -->
+        <video id="rec-live-video" autoplay playsinline muted class="absolute left-0 top-0 w-px h-px opacity-0 pointer-events-none"></video>
 
-      <!-- Live Mic Level Meter Sidebar -->
-      <div class="absolute right-3 top-1/2 -translate-y-1/2 h-40 w-2 bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/20 flex items-end">
-        <div id="rec-mic-meter" class="w-full bg-gradient-to-t from-emerald-400 via-brand-purple to-brand-pink rounded-full transition-all duration-75" style="height: 0%"></div>
-      </div>
+        <!-- Headphone Recommendation Banner Overlay -->
+        <div id="rec-headphone-tip" class="absolute top-3 left-3 right-3 p-2.5 rounded-2xl glass-card border border-brand-purple/40 text-xs text-gray-200 flex items-center gap-2 z-10">
+          <i class="ph-bold ph-headphones text-brand-pink text-lg shrink-0"></i>
+          <span id="rec-headphone-tip-text"><strong>Pro Tip:</strong> Use headphones to hear existing reference tracks clearly!</span>
+        </div>
 
-      <!-- Timer Box -->
-      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-black/70 border border-white/20 text-white font-mono text-sm font-bold flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-        <span id="rec-timer">00:00.0</span>
+        <!-- Live Mic Level Meter Sidebar -->
+        <div class="absolute right-3 top-1/2 -translate-y-1/2 h-40 w-2 bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/20 flex items-end z-10">
+          <div id="rec-mic-meter" class="w-full bg-gradient-to-t from-emerald-400 via-brand-purple to-brand-pink rounded-full transition-all duration-75" style="height: 0%"></div>
+        </div>
+
+        <!-- Timer Box -->
+        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-black/70 border border-white/20 text-white font-mono text-sm font-bold flex items-center gap-2 z-10">
+          <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+          <span id="rec-timer">00:00.0</span>
+        </div>
       </div>
     </div>
 
@@ -764,8 +769,8 @@
         startTime: 0,
         facingMode: 'user',
         counting: false,
-        refs: [],
-        refTimeouts: [],
+        previewFrame: null,
+        isRecording: false,
         tempBlob: null,
         tempUrl: null,
         tempDuration: 0
@@ -1600,6 +1605,9 @@
       document.getElementById('btn-rec-start-stop').classList.remove('hidden');
       document.getElementById('rec-timer').textContent = formatTime(0);
 
+      prepareAudioGraph();          // created inside the tap gesture so audio can start
+      syncMedia(0, false, true);    // show first frames of the other tracks
+      startRecPreview();
       await initRecordingStream();
     }
 
@@ -1663,7 +1671,7 @@
       if (rec.timerInterval) clearInterval(rec.timerInterval);
       if (rec.audioCtx) { rec.audioCtx.close().catch(() => {}); rec.audioCtx = null; }
       if (rec.stream) rec.stream.getTracks().forEach(t => t.stop());
-      stopRefAudioPlayback();
+      stopRecPreview();
       document.getElementById('rec-countdown-overlay').classList.add('hidden');
       document.getElementById('rec-btn-icon').className = 'w-6 h-6 rounded-md bg-white';
       document.getElementById('recording-modal').classList.add('hidden');
@@ -1685,7 +1693,8 @@
       const numEl = document.getElementById('rec-countdown-num');
 
       rec.counting = true;
-      prepareRefAudio(); // load references during the countdown so they start instantly
+      prepareAudioGraph();        // make sure the other tracks are wired and ready
+      syncMedia(0, false, true);  // park them on frame 0 during the countdown
       overlay.classList.remove('hidden');
 
       let count = 3;
@@ -1732,9 +1741,10 @@
       };
 
       // Start reference playback and recording in the same tick for tight sync
-      startRefPlayback();
+      syncMedia(0, true, true);   // other tracks + backing start with the recorder
       mediaRecorder.start(250);
       rec.startTime = performance.now();
+      rec.isRecording = true;
 
       const backing = AppState.currentProject.backing;
       const maxLen = backing ? backing.duration : 0;
@@ -1760,57 +1770,49 @@
       if (rec.mediaRecorder && rec.mediaRecorder.state === 'recording') {
         rec.mediaRecorder.stop();
       }
-      stopRefAudioPlayback();
+      rec.isRecording = false;
+      stopRecPlayback();
       document.getElementById('rec-btn-icon').className = 'w-6 h-6 rounded-md bg-white';
     }
 
-    /* Reference playback in headphones: backing track + already-recorded tracks */
-    function prepareRefAudio() {
-      stopRefAudioPlayback();
+    /* Live collage preview while recording: your camera fills your slot, the other
+       tracks play in their slots, and the backing track plays in your headphones.
+       Only the raw camera stream is recorded; the collage is preview-only. */
+    function startRecPreview() {
       const rec = AppState.recording;
-      const p = AppState.currentProject;
-      const refs = [];
+      if (rec.previewFrame) cancelAnimationFrame(rec.previewFrame);
+      const canvas = document.getElementById('rec-canvas');
+      const cam = document.getElementById('rec-live-video');
 
-      if (p.backing && !p.backing.muted) {
-        refs.push({ audio: new Audio(p.backing.url), item: p.backing, isBacking: true });
-      }
-      p.slots.forEach((s, i) => {
-        if (i !== rec.slotIndex && s.url && !s.muted) {
-          refs.push({ audio: new Audio(s.url), item: s, isBacking: false });
+      const loop = () => {
+        if (document.getElementById('recording-modal').classList.contains('hidden')) {
+          rec.previewFrame = null;
+          return;
         }
-      });
-      refs.forEach(r => {
-        r.audio.preload = 'auto';
-        r.audio.volume = Math.min(1, r.item.volume);
-        r.audio.load();
-      });
-      rec.refs = refs;
+        if (rec.isRecording) {
+          syncMedia((performance.now() - rec.startTime) / 1000, true);
+        }
+        renderComposition(canvas, {
+          cameraIdx: rec.slotIndex,
+          cameraVideo: cam,
+          mirror: rec.facingMode === 'user'
+        });
+        rec.previewFrame = requestAnimationFrame(loop);
+      };
+      loop();
     }
 
-    function startRefPlayback() {
-      const rec = AppState.recording;
-      rec.refTimeouts = [];
-      rec.refs.forEach(r => {
-        const off = itemOffsetSec(r.item, r.isBacking);
-        if (off > 0) {
-          rec.refTimeouts.push(setTimeout(() => r.audio.play().catch(() => {}), off * 1000));
-        } else {
-          try { r.audio.currentTime = -off; } catch (e) {}
-          r.audio.play().catch(e => console.log('Reference audio blocked:', e));
-        }
-      });
+    function stopRecPlayback() {
+      getMediaItems().forEach(({ el }) => { if (!el.paused) el.pause(); });
+      syncMedia(0, false, true);
     }
 
-    function stopRefAudioPlayback() {
+    function stopRecPreview() {
       const rec = AppState.recording;
-      (rec.refTimeouts || []).forEach(clearTimeout);
-      rec.refTimeouts = [];
-      (rec.refs || []).forEach(r => {
-        r.audio.pause();
-        r.audio.removeAttribute('src');
-        r.audio.load();
-      });
-      rec.refs = [];
+      if (rec.previewFrame) cancelAnimationFrame(rec.previewFrame);
+      rec.previewFrame = null;
+      rec.isRecording = false;
+      stopRecPlayback();
     }
 
     document.getElementById('btn-rec-save')?.addEventListener('click', () => {
@@ -1968,6 +1970,14 @@
     function drawCanvasFrame() {
       const canvas = document.getElementById('studio-canvas');
       if (!canvas) return;
+      const hasMedia = renderComposition(canvas);
+      document.getElementById('canvas-empty-state').classList.toggle('hidden', hasMedia || !!AppState.currentProject.backing);
+    }
+
+    /* Draws the split-screen collage onto any 720x1280 canvas.
+       opts.cameraIdx / cameraVideo / mirror: substitute a live camera feed into one slot. */
+    function renderComposition(canvas, opts = {}) {
+      if (!canvas) return false;
       if (canvas.width !== CANVAS_W) canvas.width = CANVAS_W;
       if (canvas.height !== CANVAS_H) canvas.height = CANVAS_H;
       const ctx = canvas.getContext('2d');
@@ -1984,15 +1994,23 @@
 
       preset.rects.forEach((rect, idx) => {
         const slot = slots[idx];
-        ctx.save();
+        const isCam = opts.cameraIdx === idx;
+        const source = isCam ? opts.cameraVideo : (slot && slot.url ? slot.videoEl : null);
 
+        ctx.save();
         ctx.beginPath();
         ctx.rect(rect.x, rect.y, rect.w, rect.h);
         ctx.clip();
 
-        if (slot && slot.videoEl && slot.url && slot.videoEl.readyState >= 2) {
+        if (source && source.readyState >= 2) {
           hasAnyMedia = true;
-          drawVideoCover(ctx, slot.videoEl, rect.x, rect.y, rect.w, rect.h);
+          if (isCam && opts.mirror) {
+            const cx = rect.x + rect.w / 2;
+            ctx.translate(cx, 0);
+            ctx.scale(-1, 1);
+            ctx.translate(-cx, 0);
+          }
+          drawVideoCover(ctx, source, rect.x, rect.y, rect.w, rect.h);
         } else {
           ctx.fillStyle = '#13131a';
           ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
@@ -2008,6 +2026,15 @@
         }
 
         ctx.restore();
+
+        // Highlight the slot currently being recorded
+        if (isCam) {
+          ctx.save();
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 8;
+          ctx.strokeRect(rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8);
+          ctx.restore();
+        }
       });
 
       if (document.getElementById('pref-watermark')?.checked) {
@@ -2018,7 +2045,7 @@
         ctx.fillText('Acapella', CANVAS_W - 24, CANVAS_H - 24);
       }
 
-      document.getElementById('canvas-empty-state').classList.toggle('hidden', hasAnyMedia || !!AppState.currentProject.backing);
+      return hasAnyMedia;
     }
 
     function drawVideoCover(ctx, video, x, y, w, h) {
