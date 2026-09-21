@@ -108,6 +108,10 @@
       cursor: pointer;
       box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
     }
+    input[type=range].cyan-slider::-webkit-slider-thumb {
+      background: #06b6d4;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+    }
 
     /* Pulsing recording indicator */
     @keyframes pulse-red {
@@ -168,6 +172,7 @@
             e.waitUntil(clients.claim());
           });
           self.addEventListener('fetch', (e) => {
+            // Network first with fallback to cache
             e.respondWith(
               fetch(e.request).catch(() => caches.match(e.request))
             );
@@ -188,16 +193,16 @@
       </div>
       <div>
         <h1 class="text-lg font-bold leading-none tracking-tight gradient-text">Acapella</h1>
-        <span class="text-[10px] text-gray-400 font-medium">Studio Engine v2.5</span>
+        <span class="text-[10px] text-gray-400 font-medium">Studio Engine v2.6</span>
       </div>
     </div>
     
     <div class="flex items-center gap-2">
-      <button id="pwa-install-btn" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-purple/20 border border-brand-purple/40 text-brand-purple text-xs font-semibold hover:bg-brand-purple/30 transition">
+      <button id="pwa-install-btn" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-purple/20 border border-brand-purple/40 text-brand-purple text-xs font-semibold hover:bg-brand-purple/30 transition">
         <i class="ph-bold ph-download-simple"></i>
         <span>Install App</span>
       </button>
-      <button id="btn-quick-settings" class="p-2 rounded-xl text-gray-300 hover:bg-brand-card hover:text-white transition">
+      <button id="btn-quick-settings" onclick="navTo('settings')" class="p-2 rounded-xl text-gray-300 hover:bg-brand-card hover:text-white transition">
         <i class="ph-bold ph-gear text-xl"></i>
       </button>
     </div>
@@ -221,7 +226,7 @@
   </div>
 
   <!-- iOS PWA Install Modal Instructions -->
-  <div id="ios-pwa-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex-col justify-end sm:justify-center p-4">
+  <div id="ios-pwa-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex flex-col justify-end sm:justify-center p-4">
     <div class="bg-brand-card border border-brand-border rounded-3xl p-6 max-w-md w-full mx-auto space-y-4">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-bold text-white flex items-center gap-2">
@@ -262,7 +267,7 @@
         <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brand-purple/20 rounded-full blur-2xl"></div>
         <span class="px-3 py-1 rounded-full bg-brand-purple/20 border border-brand-purple/40 text-brand-purple text-xs font-semibold">Studio Mobile First</span>
         <h2 class="text-2xl font-extrabold text-white leading-tight">Create Harmonized Multi-Track Videos</h2>
-        <p class="text-xs text-gray-300">Record yourself or friends in synchronized split-screen parts. Hear existing tracks live through headphones while recording new layers!</p>
+        <p class="text-xs text-gray-300">Record yourself or friends in synchronized split-screen parts over an optional backing track. Hear existing tracks live through headphones while recording new layers!</p>
         <div class="pt-2 flex flex-wrap gap-3">
           <button onclick="navTo('create')" class="px-5 py-3 rounded-2xl gradient-btn text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-brand-purple/30">
             <i class="ph-bold ph-plus-circle text-lg"></i> Start New Project
@@ -270,34 +275,6 @@
           <button onclick="navTo('clips')" class="px-4 py-3 rounded-2xl bg-brand-cardLight border border-brand-border text-gray-200 font-semibold text-sm hover:text-white">
             My Media Clips
           </button>
-        </div>
-      </div>
-
-      <!-- Backing Track Selection Card -->
-      <div class="p-4 rounded-3xl bg-brand-card border border-brand-border space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <i class="ph-bold ph-music-note-simple text-brand-purple text-xl"></i>
-            <div>
-              <h3 class="text-sm font-bold text-white">Backing Track (Optional)</h3>
-              <p class="text-[11px] text-gray-400">Audio file sets the exact maximum duration for recording</p>
-            </div>
-          </div>
-          <button id="btn-clear-backing" class="hidden text-xs text-red-400 hover:underline">Remove</button>
-        </div>
-
-        <input type="file" id="input-backing-track" accept="audio/*" class="hidden" />
-        <div id="backing-track-dropzone" onclick="document.getElementById('input-backing-track').click()" class="border-2 border-dashed border-brand-border hover:border-brand-purple p-3 rounded-2xl bg-brand-bg/50 cursor-pointer flex items-center justify-between transition">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-brand-purple/20 text-brand-purple flex items-center justify-center font-bold">
-              <i class="ph-bold ph-upload-simple"></i>
-            </div>
-            <div>
-              <p id="backing-file-name" class="text-xs font-semibold text-white">Select Audio File...</p>
-              <p id="backing-file-info" class="text-[10px] text-gray-400">MP3, WAV, AAC, M4A, OGG</p>
-            </div>
-          </div>
-          <span class="text-xs px-2.5 py-1 rounded-xl bg-brand-cardLight text-gray-300 font-medium">Browse</span>
         </div>
       </div>
 
@@ -371,7 +348,7 @@
         <i class="ph-bold ph-headphones text-brand-purple text-2xl shrink-0 mt-0.5"></i>
         <div>
           <h4 class="text-xs font-bold text-white">Headphones Recommended</h4>
-          <p class="text-[11px] text-gray-300 mt-0.5">For tight singing synchronization, wear headphones while recording track 2 and beyond so your mic only captures your live vocal performance!</p>
+          <p class="text-[11px] text-gray-300 mt-0.5">For tight singing synchronization, wear headphones while recording so your mic only captures your live vocal performance and not the backing track!</p>
         </div>
       </div>
     </section>
@@ -411,20 +388,6 @@
           </div>
         </div>
 
-        <!-- Backing Track Bar in Studio Step -->
-        <div class="flex items-center justify-between bg-brand-bg/60 p-2.5 rounded-2xl border border-brand-border/80 text-xs">
-          <div class="flex items-center gap-2">
-            <i class="ph-bold ph-music-notes text-brand-pink text-base"></i>
-            <div>
-              <span class="text-white font-semibold block leading-tight">Backing Track:</span>
-              <span id="studio-backing-label" class="text-gray-400 text-[11px]">None (Unlimited manual duration)</span>
-            </div>
-          </div>
-          <button onclick="document.getElementById('input-backing-track').click()" class="px-3 py-1 rounded-xl bg-brand-cardLight text-gray-200 hover:text-white text-xs border border-brand-border font-medium">
-            Change Audio
-          </button>
-        </div>
-
         <!-- Layout Arrangement Options -->
         <div>
           <label class="text-xs font-semibold text-gray-300 block mb-2">Split-Screen Layout Style</label>
@@ -439,7 +402,7 @@
         
         <!-- Left / Center Column: Interactive 9:16 Portrait Canvas Player -->
         <div class="md:col-span-6 flex flex-col items-center">
-          <div class="w-full max-w-[320px] aspect-9/16 bg-black rounded-3xl overflow-hidden relative border-2 border-brand-border/80 shadow-2xl group flex items-center justify-center">
+          <div id="canvas-frame" class="w-full max-w-[320px] aspect-9/16 bg-black rounded-3xl overflow-hidden relative border-2 border-brand-border/80 shadow-2xl group flex items-center justify-center">
             
             <!-- Real-time Multi-Video Canvas Rendering Engine -->
             <canvas id="studio-canvas" class="w-full h-full object-contain bg-black"></canvas>
@@ -456,14 +419,15 @@
                 <i class="ph-bold ph-video-camera"></i>
               </div>
               <h4 class="text-sm font-bold text-white">Add Your First Performance</h4>
-              <p class="text-xs text-gray-400 mt-1">Record or pick clips for each slot on the right to build your acapella collage.</p>
+              <p class="text-xs text-gray-400 mt-1">Add a backing track, then record or pick clips for each slot to build your acapella collage.</p>
             </div>
 
             <!-- Processing / Export Spinner Overlay -->
-            <div id="canvas-loader" class="absolute inset-0 bg-black/80 backdrop-blur-sm hidden flex-col items-center justify-center z-30">
+            <div id="canvas-loader" class="absolute inset-0 bg-black/80 backdrop-blur-sm hidden flex flex-col items-center justify-center z-30">
               <div class="w-12 h-12 border-4 border-brand-purple border-t-transparent rounded-full animate-spin mb-3"></div>
               <span class="text-xs font-bold text-white">Rendering Composition...</span>
               <span id="canvas-loader-progress" class="text-[11px] text-gray-400 mt-1">0%</span>
+              <span class="text-[10px] text-gray-500 mt-2 px-6 text-center">Keep this tab open and in the foreground until export finishes.</span>
             </div>
           </div>
 
@@ -471,6 +435,9 @@
           <div class="w-full max-w-[320px] mt-3 glass-card p-3 rounded-2xl border border-brand-border space-y-2">
             <div class="flex items-center justify-between text-xs text-gray-400 font-mono">
               <span id="player-time-current">00:00.0</span>
+              <span id="player-lock-badge" class="hidden items-center gap-1 text-[10px] font-sans font-semibold text-brand-cyan">
+                <i class="ph-bold ph-music-note"></i> Backing length
+              </span>
               <span id="player-time-total">00:00.0</span>
             </div>
             
@@ -492,8 +459,12 @@
           </div>
         </div>
 
-        <!-- Right Column: Track Slots List & Audio Synchronization Panels -->
+        <!-- Right Column: Backing Track, Track Slots List & Audio Synchronization Panels -->
         <div class="md:col-span-6 space-y-3">
+
+          <!-- Backing Track Card (rendered dynamically) -->
+          <div id="backing-track-card"></div>
+
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-bold text-white uppercase tracking-wider text-gray-400 flex items-center gap-2">
               <i class="ph-bold ph-sliders-horizontal text-brand-purple"></i> Track Slots
@@ -550,15 +521,15 @@
     <section id="view-settings" class="view-panel p-4 max-w-2xl mx-auto hidden pb-28 space-y-6">
       <div class="border-b border-brand-border pb-3">
         <h2 class="text-xl font-extrabold text-white">Studio Settings & Diagnostic</h2>
-        <p class="text-xs text-gray-400">Configure device permissions, watermarks, and high-fidelity audio calibration</p>
+        <p class="text-xs text-gray-400">Configure device permissions, watermarks, and audio calibration</p>
       </div>
 
       <!-- Diagnostic Camera / Mic Test Card -->
       <div class="glass-card p-4 rounded-2xl border border-brand-border space-y-3">
         <h3 class="text-sm font-bold text-white flex items-center gap-2">
-          <i class="ph-bold ph-screencast text-brand-purple"></i> High-Fidelity Audio & Hardware Diagnostic
+          <i class="ph-bold ph-screencast text-brand-purple"></i> Camera & Microphone Hardware Diagnostic
         </h3>
-        <p class="text-xs text-gray-300">Test raw unprocessed studio mic input (Noise suppression & AGC disabled for maximum acoustic fidelity).</p>
+        <p class="text-xs text-gray-300">Test device media inputs and verify real-time mic sensitivity level. Audio is captured raw: no noise suppression, echo cancellation or auto gain.</p>
 
         <div class="relative bg-black rounded-2xl aspect-video overflow-hidden flex items-center justify-center border border-brand-border">
           <video id="diagnostic-preview" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
@@ -571,7 +542,7 @@
         <!-- Mic Level Visual Meter -->
         <div class="space-y-1">
           <div class="flex justify-between text-xs text-gray-400">
-            <span>Studio Mic Sensitivity Level</span>
+            <span>Microphone Sensitivity Level</span>
             <span id="diagnostic-mic-val">0%</span>
           </div>
           <div class="w-full bg-brand-bg h-3 rounded-full overflow-hidden p-0.5 border border-brand-border">
@@ -580,7 +551,7 @@
         </div>
 
         <button id="btn-test-hardware" class="w-full py-2.5 rounded-xl bg-brand-cardLight border border-brand-border text-white text-xs font-bold hover:bg-brand-purple/20 transition">
-          Test Studio Mic & Camera Hardware
+          Test Camera & Mic Hardware
         </button>
       </div>
 
@@ -606,7 +577,7 @@
             <span id="pref-latency-val" class="text-brand-purple font-mono">0 ms</span>
           </div>
           <input id="pref-latency" type="range" min="-200" max="200" value="0" step="5" class="w-full cursor-pointer">
-          <p class="text-[10px] text-gray-400">Adjust if audio is slightly out of sync with video due to Bluetooth headphone delay.</p>
+          <p class="text-[10px] text-gray-400">Shifts all recorded tracks relative to the backing track. Negative = earlier, positive = later. Use this if your recordings sound slightly late or early (for example because of Bluetooth headphone delay).</p>
         </div>
       </div>
     </section>
@@ -614,7 +585,7 @@
   </main>
 
   <!-- RECORDING MODAL OVERLAY -->
-  <div id="recording-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex-col justify-between p-4">
+  <div id="recording-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex flex-col justify-between p-4">
     
     <!-- Top Modal Header -->
     <div class="flex items-center justify-between z-10">
@@ -646,1035 +617,1866 @@
       <!-- Headphone Recommendation Banner Overlay -->
       <div id="rec-headphone-tip" class="absolute top-3 left-3 right-3 p-2.5 rounded-2xl glass-card border border-brand-purple/40 text-xs text-gray-200 flex items-center gap-2 z-10">
         <i class="ph-bold ph-headphones text-brand-pink text-lg shrink-0"></i>
-        <span><strong>Pro Tip:</strong> Use headphones to hear existing reference tracks clearly!</span>
+        <span id="rec-headphone-tip-text"><strong>Pro Tip:</strong> Use headphones to hear existing reference tracks clearly!</span>
       </div>
 
       <!-- Live Mic Level Meter Sidebar -->
-      <div class="absolute right-3 top-1/2 -translate-y-1/2 h-40 w-2 bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/20">
+      <div class="absolute right-3 top-1/2 -translate-y-1/2 h-40 w-2 bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/20 flex items-end">
         <div id="rec-mic-meter" class="w-full bg-gradient-to-t from-emerald-400 via-brand-purple to-brand-pink rounded-full transition-all duration-75" style="height: 0%"></div>
       </div>
 
       <!-- Timer Box -->
       <div class="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-black/70 border border-white/20 text-white font-mono text-sm font-bold flex items-center gap-2">
         <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-        <span id="rec-timer-display">00:00.0</span>
-        <span id="rec-timer-max" class="text-xs text-gray-400 hidden">/ 00:00.0</span>
+        <span id="rec-timer">00:00.0</span>
       </div>
     </div>
 
-    <!-- Bottom Controls Bar -->
+    <!-- Bottom Controls -->
     <div class="flex items-center justify-center gap-6 z-10 pb-2">
-      <button id="btn-rec-trigger" class="w-20 h-20 rounded-full border-4 border-white p-1 flex items-center justify-center transition active:scale-95">
-        <div id="rec-trigger-inner" class="w-full h-full bg-red-500 rounded-full"></div>
+      <button id="btn-rec-retake" class="px-5 py-3 rounded-2xl bg-brand-card border border-brand-border text-white text-xs font-bold hidden flex items-center gap-2">
+        <i class="ph-bold ph-arrows-counter-clock-wise text-base"></i> Retake
+      </button>
+
+      <button id="btn-rec-start-stop" class="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center border-4 border-white/30 shadow-xl shadow-red-600/30 transition transform active:scale-95">
+        <div id="rec-btn-icon" class="w-6 h-6 rounded-md bg-white"></div>
+      </button>
+
+      <button id="btn-rec-save" class="px-5 py-3 rounded-2xl gradient-btn text-white text-xs font-bold hidden flex items-center gap-2 shadow-lg shadow-brand-pink/30">
+        <i class="ph-bold ph-check-circle text-base"></i> Keep Clip
       </button>
     </div>
-
   </div>
 
-  <!-- BOTTOM NAVIGATION BAR -->
-  <nav class="fixed bottom-0 inset-x-0 bg-brand-bg/90 backdrop-blur-xl border-t border-brand-border/80 px-4 py-2 z-40">
+  <!-- EXPORT / READY MODAL OVERLAY -->
+  <div id="export-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-4">
+    <div class="bg-brand-card border border-brand-border rounded-3xl p-6 max-w-sm w-full space-y-4 text-center">
+      <div class="w-16 h-16 rounded-2xl gradient-btn flex items-center justify-center text-white text-3xl mx-auto shadow-xl shadow-brand-purple/30">
+        <i class="ph-bold ph-sparkle"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-extrabold text-white">Your Video is Ready!</h3>
+        <p class="text-xs text-gray-300 mt-1">High resolution 9:16 portrait acapella video exported successfully.</p>
+      </div>
+
+      <!-- Preview Thumbnail / Player -->
+      <div class="relative aspect-9/16 max-h-64 rounded-2xl overflow-hidden border border-brand-border bg-black mx-auto">
+        <video id="export-preview-video" controls playsinline class="w-full h-full object-contain"></video>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <a id="btn-export-download" download="acapella-collage.webm" class="w-full py-3 rounded-xl gradient-btn text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-brand-purple/20">
+          <i class="ph-bold ph-download-simple text-base"></i> Download Video
+        </a>
+        <button id="btn-export-save-project" class="w-full py-2.5 rounded-xl bg-brand-cardLight border border-brand-border text-gray-200 text-xs font-bold hover:text-white">
+          Save Project to Library
+        </button>
+        <button id="btn-export-close" class="w-full py-2 text-gray-400 hover:text-white text-xs font-semibold">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY CLIPS PICKER MODAL (For Slot Assignment) -->
+  <div id="clips-picker-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex flex-col justify-end sm:justify-center p-4">
+    <div class="bg-brand-card border border-brand-border rounded-3xl p-5 max-w-md w-full mx-auto space-y-3 max-h-[80vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-brand-border pb-2">
+        <h3 class="text-sm font-bold text-white">Select Saved Clip</h3>
+        <button onclick="document.getElementById('clips-picker-modal').classList.add('hidden')" class="p-1 text-gray-400 hover:text-white">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+      <div id="clips-picker-list" class="grid grid-cols-2 gap-2.5 overflow-y-auto flex-1 pr-1">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-brand-bg/95 border-t border-brand-border/60 backdrop-blur-md z-40 px-2 py-2">
     <div class="max-w-md mx-auto flex items-center justify-around">
-      <button onclick="navTo('home')" class="nav-btn flex flex-col items-center gap-1 text-brand-purple" data-view="home">
+      
+      <button onclick="navTo('home')" data-tab="home" class="nav-btn flex flex-col items-center gap-1 text-brand-purple">
         <i class="ph-bold ph-house text-xl"></i>
-        <span class="text-[10px] font-bold">Home</span>
+        <span class="text-[10px] font-semibold">Home</span>
       </button>
-      <button onclick="navTo('create')" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white" data-view="create">
-        <i class="ph-bold ph-video text-xl"></i>
-        <span class="text-[10px] font-bold">Studio</span>
+
+      <button onclick="navTo('create')" data-tab="create" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+        <i class="ph-bold ph-circle-plus text-xl"></i>
+        <span class="text-[10px] font-semibold">Create</span>
       </button>
-      <button onclick="navTo('clips')" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white" data-view="clips">
-        <i class="ph-bold ph-folders text-xl"></i>
-        <span class="text-[10px] font-bold">Clips</span>
-      </button>
-      <button onclick="navTo('projects')" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white" data-view="projects">
+
+      <button onclick="navTo('clips')" data-tab="clips" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white">
         <i class="ph-bold ph-film-strip text-xl"></i>
-        <span class="text-[10px] font-bold">Projects</span>
+        <span class="text-[10px] font-semibold">My Clips</span>
       </button>
-      <button onclick="navTo('settings')" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white" data-view="settings">
-        <i class="ph-bold ph-gear text-xl"></i>
-        <span class="text-[10px] font-bold">Settings</span>
+
+      <button onclick="navTo('projects')" data-tab="projects" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+        <i class="ph-bold ph-folders text-xl"></i>
+        <span class="text-[10px] font-semibold">Projects</span>
       </button>
+
+      <button onclick="navTo('settings')" data-tab="settings" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+        <i class="ph-bold ph-gear-six text-xl"></i>
+        <span class="text-[10px] font-semibold">Settings</span>
+      </button>
+
     </div>
   </nav>
 
-  <!-- JAVASCRIPT APPLICATION CORE ENGINE -->
+  <!-- TOAST NOTIFICATION BANNER -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 bg-brand-card/90 border border-brand-purple/50 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl z-50 transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-4 flex items-center gap-2">
+    <i class="ph-bold ph-info text-brand-pink text-base"></i>
+    <span id="toast-msg">Message</span>
+  </div>
+
+  <!-- Hidden File Inputs -->
+  <input type="file" id="global-video-input" accept="video/*" class="hidden">
+  <input type="file" id="global-audio-input" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac" class="hidden">
+
+  <!-- MAIN APPLICATION LOGIC SCRIPT -->
   <script>
     /* ==========================================================================
-       APP STATE & DATABASE ARCHITECTURE
+       1. GLOBAL STATE & LAYOUT CONFIGURATIONS
        ========================================================================== */
     const AppState = {
-      currentView: 'home',
-      trackCount: 4,
-      layoutStyle: 'grid-4',
-      slots: [], // [{ id, clipId, videoUrl, volume: 1, muted: false, pan: 0 }]
-      backingTrack: null, // { url, duration, name, audioBuffer }
-      isPlaying: false,
-      currentTime: 0,
-      maxDuration: 0,
-      activeSlotIndex: null,
-      facingMode: 'user',
-      isRecording: false,
-      mediaRecorder: null,
-      recordedChunks: [],
-      recStartTime: 0,
-      recTimerInterval: null,
-      audioCtx: null,
-      micAudioStream: null,
-      micAnalyser: null,
-      db: null
+      activeTab: 'home',
+      currentProject: {
+        id: null,
+        title: 'New Acapella Composition',
+        trackCount: 4,
+        layoutPreset: 'grid-2x2',
+        watermark: true,
+        latencyMs: 0,
+        backing: null, // { blob, name, url, el, duration, volume, muted, offsetMs }
+        slots: [] // { id, videoEl, blob, url, title, duration, volume, muted, offsetMs }
+      },
+      pwaPrompt: null,
+      recording: {
+        slotIndex: null,
+        mediaRecorder: null,
+        chunks: [],
+        stream: null,
+        audioCtx: null,
+        micInterval: null,
+        timerInterval: null,
+        startTime: 0,
+        facingMode: 'user',
+        counting: false,
+        refs: [],
+        refTimeouts: [],
+        tempBlob: null,
+        tempUrl: null,
+        tempDuration: 0
+      },
+      playback: {
+        isPlaying: false,
+        exporting: false,
+        animFrame: null,
+        wallStart: 0,
+        timeStart: 0,
+        currentTime: 0,
+        onEnd: null
+      }
     };
 
-    /* IndexedDB Storage Operations */
+    /* Layout Rect Preset Definitions for 9:16 Aspect Ratio Canvas (Width: 720, Height: 1280) */
+    const CANVAS_W = 720;
+    const CANVAS_H = 1280;
+
+    const LAYOUT_PRESETS = {
+      2: [
+        { id: 'v-split', name: 'Vertical Stack', rects: [
+            { x: 0, y: 0, w: 720, h: 640 },
+            { x: 0, y: 640, w: 720, h: 640 }
+          ]
+        },
+        { id: 'h-split', name: 'Side-by-Side', rects: [
+            { x: 0, y: 0, w: 360, h: 1280 },
+            { x: 360, y: 0, w: 360, h: 1280 }
+          ]
+        }
+      ],
+      3: [
+        { id: 'top1-bot2', name: '1 Top / 2 Bottom', rects: [
+            { x: 0, y: 0, w: 720, h: 640 },
+            { x: 0, y: 640, w: 360, h: 640 },
+            { x: 360, y: 640, w: 360, h: 640 }
+          ]
+        },
+        { id: 'bars-3', name: '3 Horizontal Bars', rects: [
+            { x: 0, y: 0, w: 720, h: 426 },
+            { x: 0, y: 426, w: 720, h: 426 },
+            { x: 0, y: 852, w: 720, h: 428 }
+          ]
+        }
+      ],
+      4: [
+        { id: 'grid-2x2', name: '2 x 2 Quad Grid', rects: [
+            { x: 0, y: 0, w: 360, h: 640 },
+            { x: 360, y: 0, w: 360, h: 640 },
+            { x: 0, y: 640, w: 360, h: 640 },
+            { x: 360, y: 640, w: 360, h: 640 }
+          ]
+        }
+      ],
+      5: [
+        { id: 'grid-2-3', name: '2 Top / 3 Bottom', rects: [
+            { x: 0, y: 0, w: 360, h: 640 },
+            { x: 360, y: 0, w: 360, h: 640 },
+            { x: 0, y: 640, w: 240, h: 640 },
+            { x: 240, y: 640, w: 240, h: 640 },
+            { x: 480, y: 640, w: 240, h: 640 }
+          ]
+        }
+      ],
+      6: [
+        { id: 'grid-2x3', name: '2 x 3 Grid', rects: [
+            { x: 0, y: 0, w: 360, h: 426 },
+            { x: 360, y: 0, w: 360, h: 426 },
+            { x: 0, y: 426, w: 360, h: 426 },
+            { x: 360, y: 426, w: 360, h: 426 },
+            { x: 0, y: 852, w: 360, h: 428 },
+            { x: 360, y: 852, w: 360, h: 428 }
+          ]
+        }
+      ],
+      7: [
+        { id: 'grid-3-4', name: '3 Top / 4 Bottom', rects: [
+            { x: 0, y: 0, w: 240, h: 640 },
+            { x: 240, y: 0, w: 240, h: 640 },
+            { x: 480, y: 0, w: 240, h: 640 },
+            { x: 0, y: 640, w: 180, h: 640 },
+            { x: 180, y: 640, w: 180, h: 640 },
+            { x: 360, y: 640, w: 180, h: 640 },
+            { x: 540, y: 640, w: 180, h: 640 }
+          ]
+        }
+      ],
+      8: [
+        { id: 'grid-2x4', name: '2 x 4 Grid', rects: [
+            { x: 0, y: 0, w: 360, h: 320 },
+            { x: 360, y: 0, w: 360, h: 320 },
+            { x: 0, y: 320, w: 360, h: 320 },
+            { x: 360, y: 320, w: 360, h: 320 },
+            { x: 0, y: 640, w: 360, h: 320 },
+            { x: 360, y: 640, w: 360, h: 320 },
+            { x: 0, y: 960, w: 360, h: 320 },
+            { x: 360, y: 960, w: 360, h: 320 }
+          ]
+        }
+      ]
+    };
+
+    /* ==========================================================================
+       2. INDEXEDDB PERSISTENCE LAYER
+       ========================================================================== */
+    const DB_NAME = 'AcapellaStudioDB';
+    const DB_VERSION = 1;
+    let db = null;
+
     function initDB() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open('AcapellaStudioDB', 1);
-        req.onupgradeneeded = (e) => {
-          const db = e.target.result;
-          if (!db.objectStoreNames.contains('clips')) {
-            db.createObjectStore('clips', { keyPath: 'id' });
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains('clips')) {
+            database.createObjectStore('clips', { keyPath: 'id' });
           }
-          if (!db.objectStoreNames.contains('projects')) {
-            db.createObjectStore('projects', { keyPath: 'id' });
+          if (!database.objectStoreNames.contains('projects')) {
+            database.createObjectStore('projects', { keyPath: 'id' });
           }
         };
-        req.onsuccess = (e) => {
-          AppState.db = e.target.result;
-          resolve(AppState.db);
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
         };
-        req.onerror = (e) => reject(e);
+        request.onerror = (e) => reject(e);
       });
     }
 
-    async function saveToDB(storeName, item) {
-      if (!AppState.db) await initDB();
+    async function saveClipToDB(clipObj) {
+      if (!db) await initDB();
       return new Promise((resolve, reject) => {
-        const tx = AppState.db.transaction(storeName, 'readwrite');
-        const store = tx.objectStore(storeName);
-        const req = store.put(item);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = (e) => reject(e);
+        const tx = db.transaction('clips', 'readwrite');
+        tx.objectStore('clips').put(clipObj);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = (e) => reject(e);
       });
     }
 
-    async function getAllFromDB(storeName) {
-      if (!AppState.db) await initDB();
+    async function getAllClipsFromDB() {
+      if (!db) await initDB();
       return new Promise((resolve, reject) => {
-        const tx = AppState.db.transaction(storeName, 'readonly');
-        const store = tx.objectStore(storeName);
-        const req = store.getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = (e) => reject(e);
+        const tx = db.transaction('clips', 'readonly');
+        const request = tx.objectStore('clips').getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = (e) => reject(e);
       });
     }
 
-    async function deleteFromDB(storeName, id) {
-      if (!AppState.db) await initDB();
+    async function deleteClipFromDB(id) {
+      if (!db) await initDB();
       return new Promise((resolve, reject) => {
-        const tx = AppState.db.transaction(storeName, 'readwrite');
-        const store = tx.objectStore(storeName);
-        const req = store.delete(id);
-        req.onsuccess = () => resolve();
-        req.onerror = (e) => reject(e);
+        const tx = db.transaction('clips', 'readwrite');
+        tx.objectStore('clips').delete(id);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = (e) => reject(e);
       });
+    }
+
+    async function saveProjectToDB(projObj) {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('projects', 'readwrite');
+        tx.objectStore('projects').put(projObj);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    async function getAllProjectsFromDB() {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('projects', 'readonly');
+        const request = tx.objectStore('projects').getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = (e) => reject(e);
+      });
+    }
+
+    async function deleteProjectFromDB(id) {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('projects', 'readwrite');
+        tx.objectStore('projects').delete(id);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = (e) => reject(e);
+      });
+    }
+
+    /* Projects contain live DOM elements and blob URLs, which cannot be stored in
+       IndexedDB. Serialize to plain data (blobs + settings) and rebuild on load. */
+    function serializeProject(p) {
+      return {
+        id: p.id,
+        title: p.title,
+        trackCount: p.trackCount,
+        layoutPreset: p.layoutPreset,
+        watermark: p.watermark,
+        latencyMs: p.latencyMs,
+        updatedAt: p.updatedAt,
+        slots: p.slots.map(s => ({
+          id: s.id, blob: s.blob, title: s.title, duration: s.duration,
+          volume: s.volume, muted: s.muted, offsetMs: s.offsetMs
+        })),
+        backing: p.backing ? {
+          blob: p.backing.blob, name: p.backing.name, duration: p.backing.duration,
+          volume: p.backing.volume, muted: p.backing.muted, offsetMs: p.backing.offsetMs
+        } : null
+      };
+    }
+
+    async function hydrateProject(saved) {
+      const proj = {
+        ...saved,
+        backing: null,
+        slots: (saved.slots || []).map(s => {
+          const slot = { ...s, videoEl: null, url: null };
+          if (s.blob) {
+            slot.url = URL.createObjectURL(s.blob);
+            createSlotVideoElement(slot);
+          }
+          return slot;
+        })
+      };
+      if (saved.backing && saved.backing.blob) {
+        try {
+          proj.backing = await createBacking(saved.backing.blob, saved.backing.name, saved.backing);
+        } catch (e) {
+          showToast('Saved backing track could not be loaded.');
+        }
+      }
+      return proj;
     }
 
     /* ==========================================================================
-       VIEW ROUTING & NAVIGATION
+       3. NAVIGATION & UI HELPERS
        ========================================================================== */
-    function navTo(viewId) {
-      AppState.currentView = viewId;
+    function navTo(tabName) {
+      AppState.activeTab = tabName;
       document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
-      const activePanel = document.getElementById(`view-${viewId}`);
+      const activePanel = document.getElementById(`view-${tabName}`);
       if (activePanel) activePanel.classList.remove('hidden');
 
       document.querySelectorAll('.nav-btn').forEach(btn => {
-        if (btn.dataset.view === viewId) {
-          btn.classList.add('text-brand-purple');
-          btn.classList.remove('text-gray-400');
+        if (btn.dataset.tab === tabName) {
+          btn.className = 'nav-btn flex flex-col items-center gap-1 text-brand-purple';
         } else {
-          btn.classList.remove('text-brand-purple');
-          btn.classList.add('text-gray-400');
+          btn.className = 'nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-white';
         }
       });
 
-      if (viewId === 'clips') renderClipsLibrary();
-      if (viewId === 'projects') renderProjectsLibrary();
+      if (tabName !== 'create' && AppState.playback.isPlaying && !AppState.playback.exporting) pauseStudioPlayback();
+
+      if (tabName === 'clips') renderClipsGrid();
+      if (tabName === 'projects') renderProjectsGrid();
+      if (tabName === 'home') renderHomeProjects();
+      if (tabName === 'create') renderStudioWorkspace();
+    }
+
+    let toastTimer = null;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = message;
+      toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
+      }, 3200);
+    }
+
+    function esc(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
     /* ==========================================================================
-       BACKING TRACK & HIGH QUALITY AUDIO ENGINE
+       4. PWA INSTALLATION PROMPTS & SERVICE WORKER
        ========================================================================== */
-    const inputBackingTrack = document.getElementById('input-backing-track');
-    const backingFileName = document.getElementById('backing-file-name');
-    const backingFileInfo = document.getElementById('backing-file-info');
-    const btnClearBacking = document.getElementById('btn-clear-backing');
-    const studioBackingLabel = document.getElementById('studio-backing-label');
-
-    inputBackingTrack.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const url = URL.createObjectURL(file);
-      const tempAudio = new Audio();
-      tempAudio.src = url;
-
-      tempAudio.onloadedmetadata = () => {
-        AppState.backingTrack = {
-          file,
-          url,
-          name: file.name,
-          duration: tempAudio.duration,
-          audioEl: tempAudio
-        };
-
-        // Enforce audio duration as strict project maximum duration limit
-        AppState.maxDuration = tempAudio.duration;
-
-        backingFileName.textContent = file.name;
-        backingFileInfo.textContent = `Max Video Duration: ${formatTime(tempAudio.duration)}`;
-        btnClearBacking.classList.remove('hidden');
-        studioBackingLabel.textContent = `${file.name} (${formatTime(tempAudio.duration)})`;
-
-        updatePlayerTimeDisplay();
-        renderCanvas();
-      };
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      AppState.pwaPrompt = e;
+      const installBtn = document.getElementById('pwa-install-btn');
+      const banner = document.getElementById('pwa-banner');
+      if (installBtn) installBtn.classList.remove('hidden');
+      if (banner) banner.classList.remove('hidden');
     });
 
-    btnClearBacking.addEventListener('click', () => {
-      if (AppState.backingTrack && AppState.backingTrack.url) {
-        URL.revokeObjectURL(AppState.backingTrack.url);
-      }
-      AppState.backingTrack = null;
-      inputBackingTrack.value = '';
-
-      backingFileName.textContent = 'Select Audio File...';
-      backingFileInfo.textContent = 'MP3, WAV, AAC, M4A, OGG';
-      btnClearBacking.classList.add('hidden');
-      studioBackingLabel.textContent = 'None (Unlimited manual duration)';
-
-      recalculateMaxDuration();
-      updatePlayerTimeDisplay();
-      renderCanvas();
+    document.getElementById('pwa-install-btn')?.addEventListener('click', triggerPwaInstall);
+    document.getElementById('pwa-banner-install')?.addEventListener('click', triggerPwaInstall);
+    document.getElementById('pwa-banner-close')?.addEventListener('click', () => {
+      document.getElementById('pwa-banner').classList.add('hidden');
     });
 
-    /* Recalculate max duration across slots unless backing track overrides it */
-    function recalculateMaxDuration() {
-      if (AppState.backingTrack) {
-        AppState.maxDuration = AppState.backingTrack.duration;
+    function triggerPwaInstall() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        document.getElementById('ios-pwa-modal').classList.remove('hidden');
         return;
       }
-      let maxD = 0;
-      AppState.slots.forEach(slot => {
-        if (slot.videoEl && slot.videoEl.duration && !isNaN(slot.videoEl.duration)) {
-          if (slot.videoEl.duration > maxD) maxD = slot.videoEl.duration;
-        }
-      });
-      AppState.maxDuration = maxD;
-    }
-
-    /* Studio High Quality Microphonic Constraints (No Cancellation / Filtering) */
-    function getHighQualityAudioConstraints() {
-      return {
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          sampleRate: 48000,
-          channelCount: 2
-        },
-        video: {
-          facingMode: AppState.facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        }
-      };
+      if (AppState.pwaPrompt) {
+        AppState.pwaPrompt.prompt();
+        AppState.pwaPrompt.userChoice.then((choice) => {
+          if (choice.outcome === 'accepted') {
+            showToast('Acapella app installed successfully!');
+          }
+          AppState.pwaPrompt = null;
+        });
+      } else {
+        showToast('App installation is not directly supported on this browser.');
+      }
     }
 
     /* ==========================================================================
-       TRACK LAYOUT ENGINE & SLOT MANAGEMENT
+       5. AUDIO ENGINE (Web Audio graph: unprocessed, high quality)
        ========================================================================== */
-    function startNewProjectWithTracks(count) {
-      setTrackCount(count);
-      navTo('create');
+
+    /* Raw microphone capture: every browser-side voice processor is switched off. */
+    function getMicConstraints() {
+      return {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        voiceIsolation: false,
+        channelCount: { ideal: 2 },
+        sampleRate: { ideal: 48000 },
+        latency: { ideal: 0 },
+        // Legacy Chrome-specific switches
+        advanced: [{
+          googEchoCancellation: false,
+          googAutoGainControl: false,
+          googAutoGainControl2: false,
+          googNoiseSuppression: false,
+          googHighpassFilter: false,
+          googTypingNoiseDetection: false
+        }]
+      };
     }
 
-    function setTrackCount(count) {
-      AppState.trackCount = count;
-      document.querySelectorAll('.track-num-btn').forEach(btn => {
-        if (parseInt(btn.dataset.num) === count) {
-          btn.classList.add('gradient-btn', 'text-white');
-          btn.classList.remove('text-gray-400');
-        } else {
-          btn.classList.remove('gradient-btn', 'text-white');
-          btn.classList.add('text-gray-400');
+    function warnIfProcessed(stream) {
+      const track = stream.getAudioTracks()[0];
+      const s = track && track.getSettings ? track.getSettings() : null;
+      if (s && (s.noiseSuppression || s.echoCancellation || s.autoGainControl)) {
+        showToast('This browser is still applying some mic processing.');
+      }
+    }
+
+    const AudioEngine = {
+      ctx: null,
+      mix: null,      // sum of all tracks (also feeds the exporter)
+      monitor: null,  // speaker output (mutable without affecting export)
+      muted: false,
+
+      ensure() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          try { this.ctx = new AC({ latencyHint: 'playback', sampleRate: 48000 }); }
+          catch (e) { this.ctx = new AC(); }
+          this.mix = this.ctx.createGain();
+          this.monitor = this.ctx.createGain();
+          this.monitor.gain.value = this.muted ? 0 : 1;
+          this.mix.connect(this.monitor);
+          this.monitor.connect(this.ctx.destination);
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        return this.ctx;
+      },
+
+      attach(el) {
+        if (!el._wa) {
+          const src = this.ctx.createMediaElementSource(el);
+          const gain = this.ctx.createGain();
+          src.connect(gain);
+          gain.connect(this.mix);
+          el._wa = { src, gain };
+        }
+        return el._wa;
+      },
+
+      setMuted(m) {
+        this.muted = m;
+        if (this.monitor) this.monitor.gain.value = m ? 0 : 1;
+      }
+    };
+
+    function getMediaItems() {
+      const p = AppState.currentProject;
+      const items = [];
+      if (p.backing && p.backing.el) items.push({ el: p.backing.el, item: p.backing, isBacking: true });
+      p.slots.forEach(s => {
+        if (s.videoEl && s.url) items.push({ el: s.videoEl, item: s, isBacking: false });
+      });
+      return items;
+    }
+
+    function prepareAudioGraph() {
+      AudioEngine.ensure();
+      getMediaItems().forEach(({ el }) => AudioEngine.attach(el));
+      applyMix();
+    }
+
+    function applyMix() {
+      if (!AudioEngine.ctx) return;
+      getMediaItems().forEach(({ el, item }) => {
+        if (el._wa) el._wa.gain.gain.value = item.muted ? 0 : item.volume;
+      });
+    }
+
+    /* Offset in seconds: positive = plays later, negative = plays earlier */
+    function itemOffsetSec(item, isBacking) {
+      const own = (item.offsetMs || 0) / 1000;
+      const global = isBacking ? 0 : (AppState.currentProject.latencyMs || 0) / 1000;
+      return own + global;
+    }
+
+    /* Project length: the backing track defines it. Without one, use the longest clip. */
+    function getProjectDuration() {
+      const p = AppState.currentProject;
+      if (p.backing && p.backing.duration) return p.backing.duration;
+      let max = 0;
+      p.slots.forEach(s => {
+        if (s.videoEl && s.url) {
+          const d = isFinite(s.videoEl.duration) && s.videoEl.duration > 0 ? s.videoEl.duration : (s.duration || 0);
+          if (d > max) max = d;
         }
       });
-
-      // Default layout styles based on count
-      if (count === 2) AppState.layoutStyle = 'v-split-2';
-      else if (count === 3) AppState.layoutStyle = 'top-1-bottom-2';
-      else if (count === 4) AppState.layoutStyle = 'grid-4';
-      else AppState.layoutStyle = `grid-${count}`;
-
-      initSlots(count);
-      renderLayoutOptions();
-      renderSlotCards();
-      renderCanvas();
+      return max;
     }
 
-    function initSlots(count) {
-      // Retain active videos when re-scaling slots count
-      const existingSlots = AppState.slots || [];
-      AppState.slots = [];
-      for (let i = 0; i < count; i++) {
-        if (existingSlots[i]) {
-          AppState.slots.push(existingSlots[i]);
-        } else {
-          AppState.slots.push({
-            id: `slot-${i}`,
-            clipId: null,
-            videoUrl: null,
-            videoEl: null,
-            volume: 1,
-            muted: false
+    function updateDurationUI() {
+      const dur = getProjectDuration();
+      document.getElementById('player-time-total').textContent = formatTime(dur);
+      const badge = document.getElementById('player-lock-badge');
+      const locked = !!AppState.currentProject.backing;
+      badge.classList.toggle('hidden', !locked);
+      badge.classList.toggle('flex', locked);
+      if (AppState.playback.currentTime > dur) resetTimeline();
+    }
+
+    function resetTimeline() {
+      AppState.playback.currentTime = 0;
+      const scrub = document.getElementById('player-scrubber');
+      if (scrub) scrub.value = 0;
+      document.getElementById('player-time-current').textContent = formatTime(0);
+    }
+
+    /* ==========================================================================
+       6. BACKING TRACK
+       ========================================================================== */
+    function createBacking(blob, name, opts = {}) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(blob);
+        const el = new Audio();
+        el.preload = 'auto';
+        el.crossOrigin = 'anonymous';
+        el.addEventListener('loadedmetadata', () => {
+          const d = el.duration;
+          if (!isFinite(d) || d <= 0) {
+            URL.revokeObjectURL(url);
+            reject(new Error('Unreadable duration'));
+            return;
+          }
+          resolve({
+            blob, name, url, el,
+            duration: d,
+            volume: opts.volume ?? 1,
+            muted: !!opts.muted,
+            offsetMs: opts.offsetMs ?? 0
           });
-        }
-      }
-      updateActiveBadge();
-    }
-
-    function renderLayoutOptions() {
-      const container = document.getElementById('layout-preset-options');
-      container.innerHTML = '';
-      const count = AppState.trackCount;
-
-      const layouts = getAvailableLayoutsForCount(count);
-      layouts.forEach(layout => {
-        const card = document.createElement('button');
-        card.className = `p-2.5 rounded-2xl border flex flex-col items-center gap-2 transition ${AppState.layoutStyle === layout.id ? 'border-brand-purple bg-brand-purple/10' : 'border-brand-border bg-brand-card hover:border-brand-purple/50'}`;
-        card.onclick = () => {
-          AppState.layoutStyle = layout.id;
-          renderLayoutOptions();
-          renderCanvas();
-        };
-
-        card.innerHTML = `
-          <div class="w-12 h-16 bg-brand-bg rounded-lg p-1 grid ${layout.gridClass} gap-0.5">
-            ${Array(count).fill(0).map(() => `<div class="bg-brand-purple/60 rounded"></div>`).join('')}
-          </div>
-          <span class="text-[11px] font-semibold text-gray-300">${layout.name}</span>
-        `;
-        container.appendChild(card);
+        }, { once: true });
+        el.addEventListener('error', () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('Decode error'));
+        }, { once: true });
+        el.src = url;
       });
     }
 
-    function getAvailableLayoutsForCount(count) {
-      if (count === 2) {
-        return [
-          { id: 'v-split-2', name: 'Stacked Top/Bottom', gridClass: 'grid-rows-2 grid-cols-1' },
-          { id: 'h-split-2', name: 'Side by Side', gridClass: 'grid-cols-2 grid-rows-1' }
-        ];
-      } else if (count === 3) {
-        return [
-          { id: 'top-1-bottom-2', name: '1 Top / 2 Bottom', gridClass: 'grid-cols-2 grid-rows-2' },
-          { id: 'v-split-3', name: 'Vertical Stack (3)', gridClass: 'grid-rows-3 grid-cols-1' }
-        ];
-      } else if (count === 4) {
-        return [
-          { id: 'grid-4', name: '2x2 Quad Grid', gridClass: 'grid-cols-2 grid-rows-2' },
-          { id: 'v-split-4', name: '4 Vertical Rows', gridClass: 'grid-rows-4 grid-cols-1' }
-        ];
-      } else {
-        return [
-          { id: `grid-${count}`, name: `${count} Multi-Grid`, gridClass: 'grid-cols-2 grid-rows-3' }
-        ];
-      }
+    function releaseBacking(b) {
+      if (!b) return;
+      try {
+        b.el.pause();
+        if (b.el._wa) b.el._wa.gain.disconnect();
+      } catch (e) {}
+      URL.revokeObjectURL(b.url);
     }
 
-    function renderSlotCards() {
-      const container = document.getElementById('studio-slots-container');
-      container.innerHTML = '';
-
-      AppState.slots.forEach((slot, index) => {
-        const card = document.createElement('div');
-        card.className = 'glass-card p-3 rounded-2xl border border-brand-border space-y-2';
-
-        if (slot.videoUrl) {
-          card.innerHTML = `
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="w-5 h-5 rounded-full bg-brand-purple/20 text-brand-purple text-xs font-bold flex items-center justify-center">${index + 1}</span>
-                <span class="text-xs font-bold text-white">Track ${index + 1} Loaded</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <button onclick="clearSlot(${index})" class="p-1 text-gray-400 hover:text-red-400 text-sm">
-                  <i class="ph-bold ph-trash"></i>
-                </button>
-              </div>
-            </div>
-            <div class="flex items-center gap-3 bg-brand-bg/60 p-2 rounded-xl">
-              <i class="ph-bold ph-speaker-high text-brand-pink text-base"></i>
-              <input type="range" min="0" max="1" step="0.05" value="${slot.volume}" oninput="setSlotVolume(${index}, this.value)" class="w-full cursor-pointer" />
-            </div>
-          `;
-        } else {
-          card.innerHTML = `
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="w-5 h-5 rounded-full bg-brand-cardLight text-gray-400 text-xs font-bold flex items-center justify-center">${index + 1}</span>
-                <span class="text-xs font-semibold text-gray-400">Empty Track Slot ${index + 1}</span>
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-2 pt-1">
-              <button onclick="openRecordingModal(${index})" class="py-2 px-3 rounded-xl gradient-btn text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md">
-                <i class="ph-bold ph-record text-sm"></i> Record Live
-              </button>
-              <button onclick="triggerSlotFileUpload(${index})" class="py-2 px-3 rounded-xl bg-brand-cardLight border border-brand-border text-gray-200 text-xs font-semibold hover:text-white flex items-center justify-center gap-1.5">
-                <i class="ph-bold ph-upload-simple text-sm"></i> Choose File
-              </button>
-            </div>
-          `;
-        }
-        container.appendChild(card);
-      });
-
-      updateActiveBadge();
-    }
-
-    function updateActiveBadge() {
-      const filled = AppState.slots.filter(s => s.videoUrl).length;
-      const total = AppState.slots.length;
-      document.getElementById('active-tracks-badge').textContent = `${filled} / ${total} Filled`;
-
-      const emptyState = document.getElementById('canvas-empty-state');
-      if (filled > 0) {
-        emptyState.classList.add('hidden');
-      } else {
-        emptyState.classList.remove('hidden');
-      }
-    }
-
-    function clearSlot(index) {
-      if (AppState.slots[index].videoEl) {
-        AppState.slots[index].videoEl.pause();
-        AppState.slots[index].videoEl.src = '';
-      }
-      AppState.slots[index].videoUrl = null;
-      AppState.slots[index].videoEl = null;
-
-      recalculateMaxDuration();
-      renderSlotCards();
-      renderCanvas();
-    }
-
-    function triggerSlotFileUpload(index) {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'video/*';
+    function triggerBackingUpload() {
+      const input = document.getElementById('global-audio-input');
+      input.value = '';
       input.onchange = (e) => {
         const file = e.target.files[0];
-        if (file) loadVideoIntoSlot(index, URL.createObjectURL(file));
+        if (file) setBackingTrack(file);
       };
       input.click();
     }
 
-    function loadVideoIntoSlot(index, url) {
-      const video = document.createElement('video');
-      video.src = url;
-      video.crossOrigin = 'anonymous';
-      video.playsInline = true;
-      video.muted = AppState.slots[index].muted;
-      video.volume = AppState.slots[index].volume;
+    async function setBackingTrack(file) {
+      try {
+        const b = await createBacking(file, file.name.replace(/\.[^.]+$/, '') || 'Backing Track');
+        pauseStudioPlayback();
+        releaseBacking(AppState.currentProject.backing);
+        AppState.currentProject.backing = b;
+        resetTimeline();
+        renderBackingCard();
+        updateDurationUI();
+        syncMedia(0, false, true);
+        drawCanvasFrame();
 
-      video.onloadedmetadata = () => {
-        AppState.slots[index].videoUrl = url;
-        AppState.slots[index].videoEl = video;
+        const longer = AppState.currentProject.slots.some(s => s.duration && s.duration > b.duration + 0.5);
+        showToast(longer
+          ? `Backing added. Longer clips will be trimmed to ${formatTime(b.duration)}.`
+          : `Backing added. Video length is now ${formatTime(b.duration)}.`);
+      } catch (e) {
+        showToast('Could not read that audio file. Try MP3, WAV, M4A or OGG.');
+      }
+    }
 
-        recalculateMaxDuration();
-        updatePlayerTimeDisplay();
-        renderSlotCards();
-        renderCanvas();
+    function removeBacking() {
+      pauseStudioPlayback();
+      releaseBacking(AppState.currentProject.backing);
+      AppState.currentProject.backing = null;
+      resetTimeline();
+      renderBackingCard();
+      updateDurationUI();
+      drawCanvasFrame();
+      showToast('Backing track removed');
+    }
+
+    function toggleBackingMute() {
+      const b = AppState.currentProject.backing;
+      if (!b) return;
+      b.muted = !b.muted;
+      applyMix();
+      renderBackingCard();
+    }
+
+    function updateBackingVolume(val) {
+      const b = AppState.currentProject.backing;
+      if (!b) return;
+      b.volume = parseFloat(val);
+      document.getElementById('backing-vol-label').textContent = `${Math.round(b.volume * 100)}%`;
+      applyMix();
+    }
+
+    function updateBackingOffset(val) {
+      const b = AppState.currentProject.backing;
+      if (!b) return;
+      b.offsetMs = parseInt(val);
+      document.getElementById('backing-off-label').textContent = `${b.offsetMs} ms`;
+      resyncNow();
+    }
+
+    function renderBackingCard() {
+      const container = document.getElementById('backing-track-card');
+      const b = AppState.currentProject.backing;
+
+      if (!b) {
+        container.innerHTML = `
+          <div class="glass-card p-3 rounded-2xl border border-dashed border-brand-cyan/40 space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg bg-brand-cyan/20 text-brand-cyan flex items-center justify-center text-sm"><i class="ph-bold ph-music-note"></i></span>
+              <span class="text-xs font-bold text-white">Backing Track</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-bg text-gray-400 border border-brand-border">Optional</span>
+            </div>
+            <p class="text-[11px] text-gray-400">Add an audio file to sing along to. Its length becomes the maximum length of your video.</p>
+            <button onclick="triggerBackingUpload()" class="w-full py-2.5 rounded-xl bg-brand-cyan/15 border border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/25 transition text-xs font-bold flex items-center justify-center gap-2">
+              <i class="ph-bold ph-upload-simple text-base"></i> Add Backing Track
+            </button>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="glass-card p-3 rounded-2xl border border-brand-cyan/40 space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-6 h-6 rounded-lg bg-brand-cyan/20 text-brand-cyan flex items-center justify-center text-sm shrink-0"><i class="ph-bold ph-music-note"></i></span>
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-white truncate">${esc(b.name)}</div>
+                <div class="text-[10px] text-gray-400 font-mono">${formatTime(b.duration)} &middot; sets video length</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button onclick="toggleBackingMute()" class="p-1.5 rounded-lg ${b.muted ? 'bg-red-500/20 text-red-400' : 'bg-brand-bg text-gray-300'} text-xs">
+                <i class="ph-bold ${b.muted ? 'ph-speaker-slash' : 'ph-speaker-high'}"></i>
+              </button>
+              <button onclick="triggerBackingUpload()" title="Replace" class="p-1.5 rounded-lg bg-brand-bg text-gray-300 hover:text-white text-xs">
+                <i class="ph-bold ph-arrows-clockwise"></i>
+              </button>
+              <button onclick="removeBacking()" title="Remove" class="p-1.5 rounded-lg bg-brand-bg text-gray-400 hover:text-red-400 text-xs">
+                <i class="ph-bold ph-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="bg-brand-bg/60 p-2 rounded-xl space-y-1">
+            <div class="flex justify-between items-center text-[10px] text-gray-400">
+              <span>Volume</span>
+              <span id="backing-vol-label">${Math.round(b.volume * 100)}%</span>
+            </div>
+            <input type="range" min="0" max="2" step="0.05" value="${b.volume}" oninput="updateBackingVolume(this.value)" class="w-full cyan-slider">
+            <div class="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
+              <span>Offset (+ later / &minus; earlier)</span>
+              <span id="backing-off-label" class="font-mono text-brand-cyan">${b.offsetMs} ms</span>
+            </div>
+            <input type="range" min="-500" max="500" step="10" value="${b.offsetMs}" oninput="updateBackingOffset(this.value)" class="w-full cyan-slider">
+          </div>
+        </div>`;
+    }
+
+    /* ==========================================================================
+       7. CREATE STUDIO: TRACKS & LAYOUT ENGINE
+       ========================================================================== */
+    function makeEmptySlot(i) {
+      return {
+        id: i + 1,
+        videoEl: null,
+        blob: null,
+        url: null,
+        title: `Track ${i + 1}`,
+        duration: 0,
+        volume: 1.0,
+        muted: false,
+        offsetMs: 0
       };
     }
 
-    function setSlotVolume(index, val) {
-      AppState.slots[index].volume = parseFloat(val);
-      if (AppState.slots[index].videoEl) {
-        AppState.slots[index].videoEl.volume = parseFloat(val);
-      }
+    function startNewProjectWithTracks(count) {
+      pauseStudioPlayback();
+      releaseBacking(AppState.currentProject.backing);
+      resetTimeline();
+      AppState.currentProject = {
+        id: 'proj_' + Date.now(),
+        title: `${count}-Part Acapella Collage`,
+        trackCount: count,
+        layoutPreset: LAYOUT_PRESETS[count][0].id,
+        watermark: document.getElementById('pref-watermark')?.checked ?? true,
+        latencyMs: parseInt(document.getElementById('pref-latency')?.value || '0'),
+        backing: null,
+        slots: Array.from({ length: count }, (_, i) => makeEmptySlot(i))
+      };
+      navTo('create');
     }
 
-    /* ==========================================================================
-       CANVAS MULTI-VIDEO RENDERING ENGINE
-       ========================================================================== */
-    const canvas = document.getElementById('studio-canvas');
-    const ctx = canvas.getContext('2d');
+    function setTrackCount(count) {
+      if (!LAYOUT_PRESETS[count]) return;
+      pauseStudioPlayback();
+      AppState.currentProject.trackCount = count;
+      AppState.currentProject.layoutPreset = LAYOUT_PRESETS[count][0].id;
+      
+      const currentSlots = AppState.currentProject.slots;
+      if (currentSlots.length < count) {
+        for (let i = currentSlots.length; i < count; i++) currentSlots.push(makeEmptySlot(i));
+      } else if (currentSlots.length > count) {
+        AppState.currentProject.slots = currentSlots.slice(0, count);
+      }
 
-    function renderCanvas() {
-      // Force 9:16 portrait native resolution
-      canvas.width = 720;
-      canvas.height = 1280;
+      renderStudioWorkspace();
+    }
 
-      ctx.fillStyle = '#0a0a0c';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function renderStudioWorkspace() {
+      const count = AppState.currentProject.trackCount;
 
-      const count = AppState.slots.length;
-      const rects = getLayoutRectangles(AppState.layoutStyle, count, canvas.width, canvas.height);
-
-      AppState.slots.forEach((slot, index) => {
-        const rect = rects[index];
-        if (!rect) return;
-
-        // Draw Slot background bounding area
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(rect.x, rect.y, rect.w, rect.h);
-        ctx.clip();
-
-        if (slot.videoEl && slot.videoEl.readyState >= 2) {
-          // Object-cover fit ratio calculation
-          const vRatio = slot.videoEl.videoWidth / slot.videoEl.videoHeight;
-          const rRatio = rect.w / rect.h;
-          let dw = rect.w, dh = rect.h, dx = rect.x, dy = rect.y;
-
-          if (vRatio > rRatio) {
-            dw = rect.h * vRatio;
-            dx = rect.x - (dw - rect.w) / 2;
-          } else {
-            dh = rect.w / vRatio;
-            dy = rect.y - (dh - rect.h) / 2;
-          }
-          ctx.drawImage(slot.videoEl, dx, dy, dw, dh);
+      document.querySelectorAll('.track-num-btn').forEach(btn => {
+        if (parseInt(btn.dataset.num) === count) {
+          btn.className = 'track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-brand-purple text-white shadow';
         } else {
-          // Placeholder gradient slot background
-          ctx.fillStyle = '#13131a';
-          ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-
-          ctx.strokeStyle = '#272738';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(rect.x + 10, rect.y + 10, rect.w - 20, rect.h - 20);
-
-          ctx.fillStyle = '#8b5cf6';
-          ctx.font = 'bold 28px "Plus Jakarta Sans"';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(`Track ${index + 1}`, rect.x + rect.w / 2, rect.y + rect.h / 2);
+          btn.className = 'track-num-btn px-2.5 py-1 rounded-lg text-xs font-bold text-gray-400 hover:text-white';
         }
-
-        ctx.restore();
-
-        // Render dividing grid borders
-        ctx.strokeStyle = '#0a0a0c';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
       });
+
+      const presets = LAYOUT_PRESETS[count] || [];
+      const presetsContainer = document.getElementById('layout-preset-options');
+      presetsContainer.innerHTML = presets.map(p => `
+        <button onclick="selectLayoutPreset('${p.id}')" class="p-2.5 rounded-2xl bg-brand-bg border ${AppState.currentProject.layoutPreset === p.id ? 'border-brand-purple bg-brand-purple/10' : 'border-brand-border'} flex flex-col items-center gap-2 transition hover:border-brand-purple">
+          <div class="w-16 h-28 bg-black rounded-lg border border-brand-border relative overflow-hidden">
+            ${p.rects.map(r => `
+              <div class="absolute bg-brand-purple/40 border border-brand-purple/60 rounded-[2px]" style="left:${(r.x/720)*100}%; top:${(r.y/1280)*100}%; width:${(r.w/720)*100}%; height:${(r.h/1280)*100}%;"></div>
+            `).join('')}
+          </div>
+          <span class="text-[11px] font-semibold text-gray-200">${p.name}</span>
+        </button>
+      `).join('');
+
+      renderBackingCard();
+      renderSlotCards();
+      updateDurationUI();
+      drawCanvasFrame();
     }
 
-    function getLayoutRectangles(layoutStyle, count, width, height) {
-      const rects = [];
-      if (layoutStyle === 'v-split-2' || layoutStyle === 'v-split-3' || layoutStyle === 'v-split-4') {
-        const slotH = height / count;
-        for (let i = 0; i < count; i++) {
-          rects.push({ x: 0, y: i * slotH, w: width, h: slotH });
-        }
-      } else if (layoutStyle === 'h-split-2') {
-        const slotW = width / 2;
-        for (let i = 0; i < 2; i++) {
-          rects.push({ x: i * slotW, y: 0, w: slotW, h: height });
-        }
-      } else if (layoutStyle === 'top-1-bottom-2') {
-        rects.push({ x: 0, y: 0, w: width, h: height / 2 });
-        rects.push({ x: 0, y: height / 2, w: width / 2, h: height / 2 });
-        rects.push({ x: width / 2, y: height / 2, w: width / 2, h: height / 2 });
-      } else {
-        // Grid 2x2 or 2x3 default
-        const cols = 2;
-        const rows = Math.ceil(count / cols);
-        const slotW = width / cols;
-        const slotH = height / rows;
-        for (let i = 0; i < count; i++) {
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-          rects.push({ x: col * slotW, y: row * slotH, w: slotW, h: slotH });
-        }
-      }
-      return rects;
+    function selectLayoutPreset(presetId) {
+      AppState.currentProject.layoutPreset = presetId;
+      renderStudioWorkspace();
     }
 
-    /* Continuously render canvas when video is actively playing */
-    function renderLoop() {
-      if (AppState.isPlaying) {
-        renderCanvas();
-        updateScrubberPosition();
-        requestAnimationFrame(renderLoop);
+    function renderSlotCards() {
+      const slotsContainer = document.getElementById('studio-slots-container');
+      const slots = AppState.currentProject.slots;
+      
+      let activeCount = 0;
+      slots.forEach(s => { if (s.url) activeCount++; });
+      document.getElementById('active-tracks-badge').textContent = `${activeCount} / ${slots.length} Filled`;
+
+      slotsContainer.innerHTML = slots.map((s, idx) => {
+        const hasMedia = !!s.url;
+        return `
+          <div class="glass-card p-3 rounded-2xl border border-brand-border space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg gradient-btn text-white font-bold text-xs flex items-center justify-center">${s.id}</span>
+                <span class="text-xs font-bold text-white">${esc(s.title)}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                ${hasMedia ? `
+                  <button onclick="toggleSlotMute(${idx})" class="p-1.5 rounded-lg ${s.muted ? 'bg-red-500/20 text-red-400' : 'bg-brand-bg text-gray-300'} text-xs font-semibold">
+                    <i class="ph-bold ${s.muted ? 'ph-speaker-slash' : 'ph-speaker-high'}"></i>
+                  </button>
+                  <button onclick="removeSlotMedia(${idx})" class="p-1.5 rounded-lg bg-brand-bg text-gray-400 hover:text-red-400 text-xs">
+                    <i class="ph-bold ph-trash"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            ${hasMedia ? `
+              <div class="flex items-center gap-3 bg-brand-bg/60 p-2 rounded-xl">
+                <div class="w-12 h-12 rounded-lg bg-black overflow-hidden relative shrink-0 border border-brand-border">
+                  <video src="${s.url}" muted playsinline preload="metadata" class="w-full h-full object-cover"></video>
+                </div>
+                <div class="flex-1 space-y-1">
+                  <div class="flex justify-between items-center text-[10px] text-gray-400">
+                    <span>Volume</span>
+                    <span id="vol-label-${idx}">${Math.round(s.volume * 100)}%</span>
+                  </div>
+                  <input type="range" min="0" max="2" step="0.05" value="${s.volume}" oninput="updateSlotVolume(${idx}, this.value)" class="w-full">
+                  
+                  <div class="flex justify-between items-center text-[10px] text-gray-400 pt-0.5">
+                    <span>Offset (+ later / &minus; earlier)</span>
+                    <span id="off-label-${idx}" class="font-mono text-brand-purple">${s.offsetMs} ms</span>
+                  </div>
+                  <input type="range" min="-500" max="500" step="10" value="${s.offsetMs}" oninput="updateSlotOffset(${idx}, this.value)" class="w-full">
+                </div>
+              </div>
+            ` : `
+              <div class="grid grid-cols-3 gap-2 pt-1">
+                <button onclick="openRecordModal(${idx})" class="py-2.5 px-2 rounded-xl bg-brand-purple/15 border border-brand-purple/30 text-brand-purple hover:bg-brand-purple/25 transition text-xs font-bold flex flex-col items-center gap-1">
+                  <i class="ph-bold ph-video-camera text-base"></i> Record
+                </button>
+                <button onclick="triggerSlotUpload(${idx})" class="py-2.5 px-2 rounded-xl bg-brand-cardLight border border-brand-border text-gray-200 hover:text-white transition text-xs font-bold flex flex-col items-center gap-1">
+                  <i class="ph-bold ph-folder-open text-base"></i> Gallery
+                </button>
+                <button onclick="openClipsPickerModal(${idx})" class="py-2.5 px-2 rounded-xl bg-brand-cardLight border border-brand-border text-gray-200 hover:text-white transition text-xs font-bold flex flex-col items-center gap-1">
+                  <i class="ph-bold ph-film-strip text-base"></i> My Clips
+                </button>
+              </div>
+            `}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleSlotMute(idx) {
+      AppState.currentProject.slots[idx].muted = !AppState.currentProject.slots[idx].muted;
+      applyMix();
+      renderSlotCards();
+    }
+
+    function removeSlotMedia(idx) {
+      pauseStudioPlayback();
+      const slot = AppState.currentProject.slots[idx];
+      if (slot.videoEl) {
+        try { if (slot.videoEl._wa) slot.videoEl._wa.gain.disconnect(); } catch (e) {}
       }
+      slot.url = null;
+      slot.blob = null;
+      slot.videoEl = null;
+      slot.duration = 0;
+      renderSlotCards();
+      updateDurationUI();
+      drawCanvasFrame();
+    }
+
+    /* Sliders update labels in place (re-rendering the card mid-drag would kill the drag) */
+    function updateSlotVolume(idx, val) {
+      const slot = AppState.currentProject.slots[idx];
+      slot.volume = parseFloat(val);
+      const label = document.getElementById(`vol-label-${idx}`);
+      if (label) label.textContent = `${Math.round(slot.volume * 100)}%`;
+      applyMix();
+    }
+
+    function updateSlotOffset(idx, val) {
+      const slot = AppState.currentProject.slots[idx];
+      slot.offsetMs = parseInt(val);
+      const label = document.getElementById(`off-label-${idx}`);
+      if (label) label.textContent = `${slot.offsetMs} ms`;
+      resyncNow();
     }
 
     /* ==========================================================================
-       TRANSPORT & PLAYER CONTROLS
+       8. MULTI-TRACK CAMERA RECORDING ENGINE
        ========================================================================== */
-    const btnPlayerToggle = document.getElementById('btn-player-toggle');
-    const playerScrubber = document.getElementById('player-scrubber');
-    const playerTimeCurrent = document.getElementById('player-time-current');
-    const playerTimeTotal = document.getElementById('player-time-total');
-
-    btnPlayerToggle.addEventListener('click', togglePlayState);
-
-    function togglePlayState() {
-      if (AppState.isPlaying) {
-        pauseAll();
-      } else {
-        playAll();
-      }
+    function pickRecorderMime() {
+      const candidates = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4'
+      ];
+      return candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
     }
 
-    function playAll() {
-      AppState.isPlaying = true;
-      btnPlayerToggle.innerHTML = `<i class="ph-bold ph-pause text-xl"></i>`;
+    async function openRecordModal(slotIdx) {
+      pauseStudioPlayback();
+      const rec = AppState.recording;
+      rec.slotIndex = slotIdx;
+      document.getElementById('rec-title').textContent = `Recording Track Slot ${slotIdx + 1}`;
+      document.getElementById('recording-modal').classList.remove('hidden');
 
-      if (AppState.backingTrack && AppState.backingTrack.audioEl) {
-        AppState.backingTrack.audioEl.currentTime = AppState.currentTime;
-        AppState.backingTrack.audioEl.play().catch(e => console.log(e));
-      }
+      const p = AppState.currentProject;
+      const hasBacking = !!p.backing;
+      const hasOthers = p.slots.some((s, i) => i !== slotIdx && s.url);
+      document.getElementById('rec-headphone-tip').classList.toggle('hidden', !(hasBacking || hasOthers));
+      document.getElementById('rec-headphone-tip-text').innerHTML = hasBacking
+        ? `<strong>Pro Tip:</strong> Wear headphones so the backing track doesn't leak into your mic. Recording stops automatically at ${formatTime(p.backing.duration)}.`
+        : `<strong>Pro Tip:</strong> Use headphones to hear existing reference tracks clearly!`;
 
-      AppState.slots.forEach(slot => {
-        if (slot.videoEl) {
-          slot.videoEl.currentTime = AppState.currentTime;
-          slot.videoEl.play().catch(e => console.log(e));
-        }
-      });
+      document.getElementById('btn-rec-retake').classList.add('hidden');
+      document.getElementById('btn-rec-save').classList.add('hidden');
+      document.getElementById('btn-rec-start-stop').classList.remove('hidden');
+      document.getElementById('rec-timer').textContent = formatTime(0);
 
-      requestAnimationFrame(renderLoop);
+      await initRecordingStream();
     }
 
-    function pauseAll() {
-      AppState.isPlaying = false;
-      btnPlayerToggle.innerHTML = `<i class="ph-bold ph-play text-xl ml-0.5"></i>`;
-
-      if (AppState.backingTrack && AppState.backingTrack.audioEl) {
-        AppState.backingTrack.audioEl.pause();
-      }
-
-      AppState.slots.forEach(slot => {
-        if (slot.videoEl) slot.videoEl.pause();
-      });
-      renderCanvas();
-    }
-
-    playerScrubber.addEventListener('input', (e) => {
-      const pct = parseFloat(e.target.value);
-      const targetTime = (pct / 100) * AppState.maxDuration;
-      AppState.currentTime = targetTime;
-
-      if (AppState.backingTrack && AppState.backingTrack.audioEl) {
-        AppState.backingTrack.audioEl.currentTime = targetTime;
-      }
-
-      AppState.slots.forEach(slot => {
-        if (slot.videoEl) slot.videoEl.currentTime = targetTime;
-      });
-
-      playerTimeCurrent.textContent = formatTime(targetTime);
-      renderCanvas();
-    });
-
-    function updateScrubberPosition() {
-      if (!AppState.maxDuration) return;
-      let cur = 0;
-
-      if (AppState.backingTrack && AppState.backingTrack.audioEl) {
-        cur = AppState.backingTrack.audioEl.currentTime;
-      } else {
-        const activeSlot = AppState.slots.find(s => s.videoEl);
-        if (activeSlot && activeSlot.videoEl) {
-          cur = activeSlot.videoEl.currentTime;
-        }
-      }
-
-      AppState.currentTime = cur;
-      const pct = (cur / AppState.maxDuration) * 100;
-      playerScrubber.value = isNaN(pct) ? 0 : pct;
-      playerTimeCurrent.textContent = formatTime(cur);
-
-      if (cur >= AppState.maxDuration && AppState.maxDuration > 0) {
-        pauseAll();
-        AppState.currentTime = 0;
-        playerScrubber.value = 0;
-      }
-    }
-
-    function updatePlayerTimeDisplay() {
-      playerTimeTotal.textContent = formatTime(AppState.maxDuration);
-      playerTimeCurrent.textContent = formatTime(AppState.currentTime);
-    }
-
-    function formatTime(seconds) {
-      if (isNaN(seconds) || seconds === null) return "00:00.0";
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      const ms = Math.floor((seconds % 1) * 10);
-      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms}`;
-    }
-
-    /* ==========================================================================
-       SYNCHRONIZED HIGH-QUALITY RECORDING ENGINE
-       ========================================================================== */
-    const recModal = document.getElementById('recording-modal');
-    const recLiveVideo = document.getElementById('rec-live-video');
-    const btnRecTrigger = document.getElementById('btn-rec-trigger');
-    const btnRecClose = document.getElementById('btn-rec-close');
-    const btnRecSwitchCam = document.getElementById('btn-rec-switch-cam');
-    const recTimerDisplay = document.getElementById('rec-timer-display');
-    const recTimerMax = document.getElementById('rec-timer-max');
-    const recMicMeter = document.getElementById('rec-mic-meter');
-
-    function openRecordingModal(slotIndex) {
-      AppState.activeSlotIndex = slotIndex;
-      document.getElementById('rec-title').textContent = `Recording Track Slot ${slotIndex + 1}`;
-      recModal.classList.remove('hidden');
-      recModal.classList.add('flex');
-
-      if (AppState.backingTrack) {
-        recTimerMax.textContent = `/ ${formatTime(AppState.backingTrack.duration)}`;
-        recTimerMax.classList.remove('hidden');
-      } else {
-        recTimerMax.classList.add('hidden');
-      }
-
-      startCameraPreview();
-    }
-
-    async function startCameraPreview() {
+    async function initRecordingStream() {
+      const rec = AppState.recording;
       try {
-        const constraints = getHighQualityAudioConstraints();
-        AppState.micAudioStream = await navigator.mediaDevices.getUserMedia(constraints);
-        recLiveVideo.srcObject = AppState.micAudioStream;
+        if (rec.micInterval) clearInterval(rec.micInterval);
+        if (rec.audioCtx) { rec.audioCtx.close().catch(() => {}); rec.audioCtx = null; }
+        if (rec.stream) rec.stream.getTracks().forEach(t => t.stop());
 
-        // Setup Web Audio Analyser for High Fidelity Mic Visualizer Meter
-        if (!AppState.audioCtx) {
-          AppState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        const source = AppState.audioCtx.createMediaStreamSource(AppState.micAudioStream);
-        AppState.micAnalyser = AppState.audioCtx.createAnalyser();
-        AppState.micAnalyser.fftSize = 64;
-        source.connect(AppState.micAnalyser);
+        const constraints = {
+          video: { facingMode: rec.facingMode, width: { ideal: 720 }, height: { ideal: 1280 } },
+          audio: getMicConstraints()
+        };
 
-        updateMicVisualizer();
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        rec.stream = stream;
+        warnIfProcessed(stream);
+
+        document.getElementById('rec-live-video').srcObject = stream;
+
+        // Mic meter only (analyser is NOT in the recording path)
+        const AC = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AC();
+        rec.audioCtx = audioCtx;
+        const micSource = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        micSource.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        rec.micInterval = setInterval(() => {
+          analyser.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          const meterBar = document.getElementById('rec-mic-meter');
+          if (meterBar) meterBar.style.height = `${Math.min(100, avg * 2)}%`;
+        }, 100);
+
       } catch (err) {
-        alert("Camera/Microphone permission denied or device error: " + err.message);
-        closeRecordingModal();
+        showToast('Camera/Microphone permission denied or unavailable.');
+        document.getElementById('recording-modal').classList.add('hidden');
       }
     }
 
-    function updateMicVisualizer() {
-      if (!AppState.micAnalyser || recModal.classList.contains('hidden')) return;
-      const dataArray = new Uint8Array(AppState.micAnalyser.frequencyBinCount);
-      AppState.micAnalyser.getByteFrequencyData(dataArray);
+    document.getElementById('btn-rec-switch-cam')?.addEventListener('click', async () => {
+      if (AppState.recording.mediaRecorder && AppState.recording.mediaRecorder.state === 'recording') return;
+      AppState.recording.facingMode = AppState.recording.facingMode === 'user' ? 'environment' : 'user';
+      await initRecordingStream();
+    });
 
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-      const avg = sum / dataArray.length;
-      const pct = Math.min(100, Math.round((avg / 128) * 100));
+    document.getElementById('btn-rec-close')?.addEventListener('click', stopAndCloseRecordingModal);
 
-      recMicMeter.style.height = `${pct}%`;
-      requestAnimationFrame(updateMicVisualizer);
+    function stopAndCloseRecordingModal() {
+      const rec = AppState.recording;
+      if (rec.mediaRecorder && rec.mediaRecorder.state === 'recording') {
+        rec.mediaRecorder.onstop = null;
+        try { rec.mediaRecorder.stop(); } catch (e) {}
+      }
+      rec.counting = false;
+      if (rec.micInterval) clearInterval(rec.micInterval);
+      if (rec.timerInterval) clearInterval(rec.timerInterval);
+      if (rec.audioCtx) { rec.audioCtx.close().catch(() => {}); rec.audioCtx = null; }
+      if (rec.stream) rec.stream.getTracks().forEach(t => t.stop());
+      stopRefAudioPlayback();
+      document.getElementById('rec-countdown-overlay').classList.add('hidden');
+      document.getElementById('rec-btn-icon').className = 'w-6 h-6 rounded-md bg-white';
+      document.getElementById('recording-modal').classList.add('hidden');
     }
 
-    btnRecTrigger.addEventListener('click', () => {
-      if (AppState.isRecording) {
-        stopRecording();
+    document.getElementById('btn-rec-start-stop')?.addEventListener('click', () => {
+      const rec = AppState.recording;
+      if (rec.counting) return;
+      if (rec.mediaRecorder && rec.mediaRecorder.state === 'recording') {
+        stopRecordingTrack();
       } else {
-        startCountdownAndRecord();
+        startRecordingWithCountdown();
       }
     });
 
-    btnRecSwitchCam.addEventListener('click', () => {
-      AppState.facingMode = AppState.facingMode === 'user' ? 'environment' : 'user';
-      if (AppState.facingMode === 'user') {
-        recLiveVideo.classList.add('-scale-x-100');
-      } else {
-        recLiveVideo.classList.remove('-scale-x-100');
-      }
-      startCameraPreview();
-    });
+    function startRecordingWithCountdown() {
+      const rec = AppState.recording;
+      const overlay = document.getElementById('rec-countdown-overlay');
+      const numEl = document.getElementById('rec-countdown-num');
 
-    btnRecClose.addEventListener('click', closeRecordingModal);
-
-    function closeRecordingModal() {
-      if (AppState.isRecording) stopRecording();
-      if (AppState.micAudioStream) {
-        AppState.micAudioStream.getTracks().forEach(t => t.stop());
-      }
-      recModal.classList.add('hidden');
-      recModal.classList.remove('flex');
-    }
-
-    function startCountdownAndRecord() {
-      const countdownOverlay = document.getElementById('rec-countdown-overlay');
-      const countdownNum = document.getElementById('rec-countdown-num');
-      countdownOverlay.classList.remove('hidden');
+      rec.counting = true;
+      prepareRefAudio(); // load references during the countdown so they start instantly
+      overlay.classList.remove('hidden');
 
       let count = 3;
-      countdownNum.textContent = count;
+      numEl.textContent = count;
 
-      const interval = setInterval(() => {
+      const countInterval = setInterval(() => {
+        if (!rec.counting) { clearInterval(countInterval); return; }
         count--;
         if (count > 0) {
-          countdownNum.textContent = count;
+          numEl.textContent = count;
         } else {
-          clearInterval(interval);
-          countdownOverlay.classList.add('hidden');
+          clearInterval(countInterval);
+          overlay.classList.add('hidden');
+          rec.counting = false;
           executeStartRecording();
         }
       }, 1000);
     }
 
     function executeStartRecording() {
-      AppState.isRecording = true;
-      AppState.recordedChunks = [];
-      document.getElementById('rec-trigger-inner').classList.remove('bg-red-500', 'rounded-full');
-      document.getElementById('rec-trigger-inner').classList.add('bg-white', 'rounded-lg', 'scale-50');
+      const rec = AppState.recording;
+      rec.chunks = [];
 
-      // Play existing audio reference tracks & backing audio synchronously
-      if (AppState.backingTrack && AppState.backingTrack.audioEl) {
-        AppState.backingTrack.audioEl.currentTime = 0;
-        AppState.backingTrack.audioEl.play().catch(e => console.log(e));
-      }
+      const mimeType = pickRecorderMime();
+      const options = { videoBitsPerSecond: 5000000, audioBitsPerSecond: 256000 };
+      if (mimeType) options.mimeType = mimeType;
 
-      AppState.slots.forEach(s => {
-        if (s.videoEl) {
-          s.videoEl.currentTime = 0;
-          s.videoEl.play().catch(e => console.log(e));
-        }
-      });
+      const mediaRecorder = new MediaRecorder(rec.stream, options);
+      rec.mediaRecorder = mediaRecorder;
 
-      // Initialize MediaRecorder with Studio Grade Bitrate settings
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/mp4';
-      AppState.mediaRecorder = new MediaRecorder(AppState.micAudioStream, {
-        mimeType: mimeType,
-        audioBitsPerSecond: 256000 // 256kbps High-Quality Audio Encoding
-      });
-
-      AppState.mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) AppState.recordedChunks.push(e.data);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) rec.chunks.push(e.data);
       };
 
-      AppState.mediaRecorder.onstop = saveRecordedTrack;
-      AppState.mediaRecorder.start(100);
+      mediaRecorder.onstop = () => {
+        const type = (mediaRecorder.mimeType || mimeType || 'video/webm').split(';')[0];
+        const blob = new Blob(rec.chunks, { type });
+        rec.tempBlob = blob;
+        rec.tempUrl = URL.createObjectURL(blob);
 
-      AppState.recStartTime = Date.now();
-      AppState.recTimerInterval = setInterval(() => {
-        const elapsed = (Date.now() - AppState.recStartTime) / 1000;
-        recTimerDisplay.textContent = formatTime(elapsed);
+        document.getElementById('btn-rec-retake').classList.remove('hidden');
+        document.getElementById('btn-rec-save').classList.remove('hidden');
+        document.getElementById('btn-rec-start-stop').classList.add('hidden');
+      };
 
-        // Auto Stop Recording if backing track limit reached
-        if (AppState.backingTrack && elapsed >= AppState.backingTrack.duration) {
-          stopRecording();
+      // Start reference playback and recording in the same tick for tight sync
+      startRefPlayback();
+      mediaRecorder.start(250);
+      rec.startTime = performance.now();
+
+      const backing = AppState.currentProject.backing;
+      const maxLen = backing ? backing.duration : 0;
+      const timerEl = document.getElementById('rec-timer');
+      rec.timerInterval = setInterval(() => {
+        const elapsed = (performance.now() - rec.startTime) / 1000;
+        timerEl.textContent = maxLen ? `${formatTime(Math.min(elapsed, maxLen))} / ${formatTime(maxLen)}` : formatTime(elapsed);
+        if (maxLen && elapsed >= maxLen) stopRecordingTrack(); // video can never outlast the backing track
+      }, 50);
+
+      document.getElementById('rec-btn-icon').className = 'w-6 h-6 rounded-sm bg-red-600';
+    }
+
+    function stopRecordingTrack() {
+      const rec = AppState.recording;
+      if (rec.timerInterval) clearInterval(rec.timerInterval);
+      rec.timerInterval = null;
+      const backing = AppState.currentProject.backing;
+      let elapsed = (performance.now() - rec.startTime) / 1000;
+      if (backing) elapsed = Math.min(elapsed, backing.duration);
+      rec.tempDuration = elapsed;
+
+      if (rec.mediaRecorder && rec.mediaRecorder.state === 'recording') {
+        rec.mediaRecorder.stop();
+      }
+      stopRefAudioPlayback();
+      document.getElementById('rec-btn-icon').className = 'w-6 h-6 rounded-md bg-white';
+    }
+
+    /* Reference playback in headphones: backing track + already-recorded tracks */
+    function prepareRefAudio() {
+      stopRefAudioPlayback();
+      const rec = AppState.recording;
+      const p = AppState.currentProject;
+      const refs = [];
+
+      if (p.backing && !p.backing.muted) {
+        refs.push({ audio: new Audio(p.backing.url), item: p.backing, isBacking: true });
+      }
+      p.slots.forEach((s, i) => {
+        if (i !== rec.slotIndex && s.url && !s.muted) {
+          refs.push({ audio: new Audio(s.url), item: s, isBacking: false });
         }
-      }, 100);
+      });
+      refs.forEach(r => {
+        r.audio.preload = 'auto';
+        r.audio.volume = Math.min(1, r.item.volume);
+        r.audio.load();
+      });
+      rec.refs = refs;
     }
 
-    function stopRecording() {
-      if (!AppState.isRecording) return;
-      AppState.isRecording = false;
-      clearInterval(AppState.recTimerInterval);
-
-      document.getElementById('rec-trigger-inner').classList.add('bg-red-500', 'rounded-full');
-      document.getElementById('rec-trigger-inner').classList.remove('bg-white', 'rounded-lg', 'scale-50');
-
-      if (AppState.backingTrack && AppState.backingTrack.audioEl) {
-        AppState.backingTrack.audioEl.pause();
-      }
-
-      AppState.slots.forEach(s => {
-        if (s.videoEl) s.videoEl.pause();
+    function startRefPlayback() {
+      const rec = AppState.recording;
+      rec.refTimeouts = [];
+      rec.refs.forEach(r => {
+        const off = itemOffsetSec(r.item, r.isBacking);
+        if (off > 0) {
+          rec.refTimeouts.push(setTimeout(() => r.audio.play().catch(() => {}), off * 1000));
+        } else {
+          try { r.audio.currentTime = -off; } catch (e) {}
+          r.audio.play().catch(e => console.log('Reference audio blocked:', e));
+        }
       });
-
-      if (AppState.mediaRecorder && AppState.mediaRecorder.state !== 'inactive') {
-        AppState.mediaRecorder.stop();
-      }
     }
 
-    async function saveRecordedTrack() {
-      const blob = new Blob(AppState.recordedChunks, { type: 'video/webm' });
-      const videoUrl = URL.createObjectURL(blob);
+    function stopRefAudioPlayback() {
+      const rec = AppState.recording;
+      (rec.refTimeouts || []).forEach(clearTimeout);
+      rec.refTimeouts = [];
+      (rec.refs || []).forEach(r => {
+        r.audio.pause();
+        r.audio.removeAttribute('src');
+        r.audio.load();
+      });
+      rec.refs = [];
+    }
 
-      // Persist recorded clip into IndexedDB Clips Store
-      const clipId = `clip-${Date.now()}`;
-      await saveToDB('clips', {
-        id: clipId,
-        blob: blob,
-        timestamp: Date.now(),
-        duration: (Date.now() - AppState.recStartTime) / 1000
+    document.getElementById('btn-rec-save')?.addEventListener('click', () => {
+      const rec = AppState.recording;
+      const slot = AppState.currentProject.slots[rec.slotIndex];
+      const slotIdx = rec.slotIndex;
+      slot.blob = rec.tempBlob;
+      slot.url = rec.tempUrl;
+      slot.duration = rec.tempDuration || 0;
+      
+      // Auto save as individual clip in My Clips Library (blob only; URLs are per-session)
+      saveClipToDB({
+        id: 'clip_' + Date.now(),
+        title: `Performance ${slot.id}`,
+        blob: slot.blob,
+        createdAt: new Date().toLocaleDateString()
       });
 
-      loadVideoIntoSlot(AppState.activeSlotIndex, videoUrl);
-      closeRecordingModal();
+      stopAndCloseRecordingModal();
+      createSlotVideoElement(slot);
+      renderSlotCards();
+      showToast(`Track ${slotIdx + 1} recorded & assigned!`);
+    });
+
+    document.getElementById('btn-rec-retake')?.addEventListener('click', async () => {
+      document.getElementById('btn-rec-retake').classList.add('hidden');
+      document.getElementById('btn-rec-save').classList.add('hidden');
+      document.getElementById('btn-rec-start-stop').classList.remove('hidden');
+      document.getElementById('rec-timer').textContent = formatTime(0);
+      await initRecordingStream();
+    });
+
+    /* ==========================================================================
+       9. GALLERY UPLOADS & CLIPS LIBRARY ASSIGNMENT
+       ========================================================================== */
+    let pendingSlotUploadIdx = null;
+    const clipUrlCache = new Map();
+    function clipUrl(c) {
+      if (!clipUrlCache.has(c.id)) clipUrlCache.set(c.id, URL.createObjectURL(c.blob));
+      return clipUrlCache.get(c.id);
+    }
+
+    function triggerSlotUpload(slotIdx) {
+      pendingSlotUploadIdx = slotIdx;
+      const fileInput = document.getElementById('global-video-input');
+      fileInput.value = '';
+      fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        pauseStudioPlayback();
+        const slot = AppState.currentProject.slots[pendingSlotUploadIdx];
+        slot.blob = file;
+        slot.url = URL.createObjectURL(file);
+        createSlotVideoElement(slot);
+        renderSlotCards();
+        showToast(`Video loaded into Track ${pendingSlotUploadIdx + 1}`);
+      };
+      fileInput.click();
+    }
+
+    function triggerClipUpload() {
+      const fileInput = document.getElementById('global-video-input');
+      fileInput.value = '';
+      fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        await saveClipToDB({
+          id: 'clip_' + Date.now(),
+          title: file.name.split('.')[0] || 'Uploaded Clip',
+          blob: file,
+          createdAt: new Date().toLocaleDateString()
+        });
+        renderClipsGrid();
+        showToast('Clip saved to library!');
+      };
+      fileInput.click();
+    }
+
+    async function openClipsPickerModal(slotIdx) {
+      pendingSlotUploadIdx = slotIdx;
+      const modal = document.getElementById('clips-picker-modal');
+      const list = document.getElementById('clips-picker-list');
+      const clips = await getAllClipsFromDB();
+
+      if (clips.length === 0) {
+        list.innerHTML = `<p class="col-span-full text-center text-xs text-gray-400 py-6">No saved clips in library.</p>`;
+      } else {
+        list.innerHTML = clips.map(c => `
+          <div onclick="assignClipToSlot('${c.id}')" class="p-2 rounded-xl bg-brand-bg border border-brand-border hover:border-brand-purple cursor-pointer flex flex-col gap-1">
+            <div class="aspect-video bg-black rounded-lg overflow-hidden">
+              <video src="${clipUrl(c)}" muted playsinline preload="metadata" class="w-full h-full object-cover"></video>
+            </div>
+            <span class="text-xs font-bold text-white truncate">${esc(c.title)}</span>
+          </div>
+        `).join('');
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    async function assignClipToSlot(clipId) {
+      const clips = await getAllClipsFromDB();
+      const clip = clips.find(c => c.id === clipId);
+      if (!clip) return;
+
+      pauseStudioPlayback();
+      const slot = AppState.currentProject.slots[pendingSlotUploadIdx];
+      slot.blob = clip.blob;
+      slot.url = URL.createObjectURL(clip.blob);
+      createSlotVideoElement(slot);
+
+      document.getElementById('clips-picker-modal').classList.add('hidden');
+      renderSlotCards();
+      showToast(`Clip assigned to Track ${pendingSlotUploadIdx + 1}`);
+    }
+
+    /* Video elements are un-muted and routed through the Web Audio graph
+       (createMediaElementSource), so volume/mute/export all use one clean path. */
+    function createSlotVideoElement(slot) {
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.muted = false;
+      slot.videoEl = video;
+
+      const finalize = () => {
+        if (isFinite(video.duration) && video.duration > 0) slot.duration = video.duration;
+        updateDurationUI();
+        drawCanvasFrame();
+      };
+
+      video.onloadedmetadata = () => {
+        // MediaRecorder WebM files report an Infinity duration until seeked to the end
+        if (!isFinite(video.duration)) {
+          const onTime = () => {
+            video.removeEventListener('timeupdate', onTime);
+            video.currentTime = 0;
+            finalize();
+          };
+          video.addEventListener('timeupdate', onTime);
+          video.currentTime = 1e101;
+        } else {
+          finalize();
+        }
+      };
+      video.onloadeddata = drawCanvasFrame;
+      video.onseeked = drawCanvasFrame;
+      video.src = slot.url;
     }
 
     /* ==========================================================================
-       EXPORT ENGINE (9:16 CANVAS & AUDIO COMPOSITION)
+       10. CANVAS MULTI-VIDEO RENDERING ENGINE
        ========================================================================== */
-    const btnExportStudio = document.getElementById('btn-export-studio');
-    const canvasLoader = document.getElementById('canvas-loader');
-    const canvasLoaderProgress = document.getElementById('canvas-loader-progress');
+    function drawCanvasFrame() {
+      const canvas = document.getElementById('studio-canvas');
+      if (!canvas) return;
+      if (canvas.width !== CANVAS_W) canvas.width = CANVAS_W;
+      if (canvas.height !== CANVAS_H) canvas.height = CANVAS_H;
+      const ctx = canvas.getContext('2d');
 
-    btnExportStudio.addEventListener('click', exportStudioComposition);
+      ctx.fillStyle = '#0a0a0c';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    async function exportStudioComposition() {
-      if (AppState.slots.filter(s => s.videoUrl).length === 0) {
-        alert("Please add at least one video performance track before exporting.");
+      const count = AppState.currentProject.trackCount;
+      const presetId = AppState.currentProject.layoutPreset;
+      const preset = (LAYOUT_PRESETS[count] || []).find(p => p.id === presetId) || LAYOUT_PRESETS[count][0];
+      const slots = AppState.currentProject.slots;
+
+      let hasAnyMedia = false;
+
+      preset.rects.forEach((rect, idx) => {
+        const slot = slots[idx];
+        ctx.save();
+
+        ctx.beginPath();
+        ctx.rect(rect.x, rect.y, rect.w, rect.h);
+        ctx.clip();
+
+        if (slot && slot.videoEl && slot.url && slot.videoEl.readyState >= 2) {
+          hasAnyMedia = true;
+          drawVideoCover(ctx, slot.videoEl, rect.x, rect.y, rect.w, rect.h);
+        } else {
+          ctx.fillStyle = '#13131a';
+          ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+          ctx.strokeStyle = '#272738';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+
+          ctx.fillStyle = '#8b5cf6';
+          ctx.font = 'bold 36px "Plus Jakarta Sans"';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`Track ${idx + 1}`, rect.x + rect.w / 2, rect.y + rect.h / 2);
+        }
+
+        ctx.restore();
+      });
+
+      if (document.getElementById('pref-watermark')?.checked) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = 'bold 22px "Plus Jakarta Sans"';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('Acapella', CANVAS_W - 24, CANVAS_H - 24);
+      }
+
+      document.getElementById('canvas-empty-state').classList.toggle('hidden', hasAnyMedia || !!AppState.currentProject.backing);
+    }
+
+    function drawVideoCover(ctx, video, x, y, w, h) {
+      const vw = video.videoWidth || 720;
+      const vh = video.videoHeight || 1280;
+      const videoRatio = vw / vh;
+      const rectRatio = w / h;
+
+      let dw, dh, dx, dy;
+      if (videoRatio > rectRatio) {
+        dh = h;
+        dw = h * videoRatio;
+        dx = x - (dw - w) / 2;
+        dy = y;
+      } else {
+        dw = w;
+        dh = w / videoRatio;
+        dx = x;
+        dy = y - (dh - h) / 2;
+      }
+
+      ctx.drawImage(video, dx, dy, dw, dh);
+    }
+
+    /* ==========================================================================
+       11. SYNCHRONIZED PLAYBACK (single master clock drives backing + all clips)
+       ========================================================================== */
+    const btnPlayToggle = document.getElementById('btn-player-toggle');
+    const scrubber = document.getElementById('player-scrubber');
+
+    btnPlayToggle?.addEventListener('click', toggleStudioPlayback);
+
+    document.getElementById('btn-player-mute')?.addEventListener('click', () => {
+      AudioEngine.setMuted(!AudioEngine.muted);
+      document.getElementById('btn-player-mute').innerHTML =
+        `<i class="ph-bold ${AudioEngine.muted ? 'ph-speaker-slash' : 'ph-speaker-high'} text-lg"></i>`;
+    });
+
+    document.getElementById('btn-player-fullscreen')?.addEventListener('click', () => {
+      const frame = document.getElementById('canvas-frame');
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else frame.requestFullscreen?.();
+    });
+
+    function toggleStudioPlayback() {
+      if (AppState.playback.exporting) return;
+      if (AppState.playback.isPlaying) pauseStudioPlayback();
+      else startStudioPlayback();
+    }
+
+    function timelineNow() {
+      const pb = AppState.playback;
+      return pb.timeStart + (performance.now() - pb.wallStart) / 1000;
+    }
+
+    /* Bring every media element to the position the master clock says it should be at */
+    function syncMedia(t, playing, force = false) {
+      getMediaItems().forEach(({ el, item, isBacking }) => {
+        const target = t - itemOffsetSec(item, isBacking);
+        const dur = (isFinite(el.duration) && el.duration > 0) ? el.duration : (item.duration || 0);
+
+        if (target < 0) { // not started yet
+          if (!el.paused) el.pause();
+          if (el.currentTime > 0.01) el.currentTime = 0;
+          return;
+        }
+        if (dur && target >= dur - 0.03) { // finished: hold last frame
+          if (!el.paused) el.pause();
+          if (force) el.currentTime = Math.max(0, dur - 0.05);
+          return;
+        }
+        if (!playing) {
+          if (!el.paused) el.pause();
+          if (force || Math.abs(el.currentTime - target) > 0.02) el.currentTime = target;
+          return;
+        }
+        if (el.paused) {
+          el.currentTime = target;
+          el.play().catch(e => console.log('Playback error:', e));
+        } else if (force || Math.abs(el.currentTime - target) > 0.3) {
+          el.currentTime = target;
+        }
+      });
+    }
+
+    function resyncNow() {
+      const pb = AppState.playback;
+      const t = pb.isPlaying ? timelineNow() : pb.currentTime;
+      syncMedia(t, pb.isPlaying, true);
+      drawCanvasFrame();
+    }
+
+    function updateTransportUI(t, dur) {
+      document.getElementById('player-time-current').textContent = formatTime(t);
+      if (dur > 0) scrubber.value = (t / dur) * 100;
+    }
+
+    function startStudioPlayback(opts = {}) {
+      const pb = AppState.playback;
+      if (pb.isPlaying) return true;
+      if (getMediaItems().length === 0) {
+        showToast('Add a backing track or video clips before playing!');
+        return false;
+      }
+      const dur = getProjectDuration();
+      if (!dur) {
+        showToast('Media is still loading, try again in a moment.');
+        return false;
+      }
+
+      let t = pb.currentTime;
+      if (t >= dur - 0.05) t = 0;
+
+      prepareAudioGraph();
+
+      pb.isPlaying = true;
+      pb.exporting = !!opts.exporting;
+      pb.onEnd = opts.onEnd || null;
+      pb.timeStart = t;
+      pb.wallStart = performance.now();
+      btnPlayToggle.innerHTML = `<i class="ph-bold ph-pause text-xl"></i>`;
+
+      syncMedia(t, true, true);
+      pb.animFrame = requestAnimationFrame(renderPlaybackLoop);
+      return true;
+    }
+
+    function pauseStudioPlayback() {
+      const pb = AppState.playback;
+      const wasPlaying = pb.isPlaying;
+      pb.isPlaying = false;
+      if (pb.animFrame) cancelAnimationFrame(pb.animFrame);
+      pb.animFrame = null;
+      btnPlayToggle.innerHTML = `<i class="ph-bold ph-play text-xl ml-0.5"></i>`;
+      if (wasPlaying) getMediaItems().forEach(({ el }) => { if (!el.paused) el.pause(); });
+    }
+
+    function renderPlaybackLoop() {
+      const pb = AppState.playback;
+      if (!pb.isPlaying) return;
+
+      const dur = getProjectDuration();
+      const t = timelineNow();
+
+      if (t >= dur) {
+        const cb = pb.onEnd;
+        pb.onEnd = null;
+        pauseStudioPlayback();
+        if (cb) { cb(); return; } // exporter handles its own reset
+        pb.currentTime = 0;
+        resetTimeline();
+        syncMedia(0, false, true);
+        drawCanvasFrame();
         return;
       }
 
-      canvasLoader.classList.remove('hidden');
-      canvasLoader.classList.add('flex');
-      pauseAll();
+      pb.currentTime = t;
+      syncMedia(t, true);
+      drawCanvasFrame();
+      updateTransportUI(t, dur);
 
-      try {
-        const stream = canvas.captureStream(30);
-        const audioDestination = AppState.audioCtx ? AppState.audioCtx.createMediaStreamDestination() : null;
+      if (pb.exporting) {
+        document.getElementById('canvas-loader-progress').textContent = `${Math.min(100, Math.round((t / dur) * 100))}%`;
+      }
 
-        // Route Backing Track + Track Audio into standard Export Stream
-        if (audioDestination) {
-          if (AppState.backingTrack && AppState.backingTrack.audioEl) {
-            const backingSource = AppState.audioCtx.createMediaElementSource(AppState.backingTrack.audioEl);
-            backingSource.connect(audioDestination);
-          }
+      pb.animFrame = requestAnimationFrame(renderPlaybackLoop);
+    }
 
-          AppState.slots.forEach(s => {
-            if (s.videoEl) {
-              const src = AppState.audioCtx.createMediaElementSource(s.videoEl);
-              src.connect(audioDestination);
-            }
-          });
+    scrubber?.addEventListener('input', (e) => {
+      const pb = AppState.playback;
+      if (pb.exporting) return;
+      const dur = getProjectDuration();
+      const t = (parseFloat(e.target.value) / 100) * dur;
+      pb.currentTime = t;
+      if (pb.isPlaying) {
+        pb.timeStart = t;
+        pb.wallStart = performance.now();
+      }
+      document.getElementById('player-time-current').textContent = formatTime(t);
+      syncMedia(t, pb.isPlaying, true);
+      drawCanvasFrame();
+    });
 
-          audioDestination.stream.getAudioTracks().forEach(t => stream.addTrack(t));
-        }
+    /* ==========================================================================
+       12. VIDEO COMPOSITION EXPORTER
+       ========================================================================== */
+    let lastExportUrl = null;
 
-        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-        const exportChunks = [];
+    document.getElementById('btn-export-studio')?.addEventListener('click', exportStudioComposition);
+    document.getElementById('btn-export-close')?.addEventListener('click', () => {
+      const v = document.getElementById('export-preview-video');
+      v.pause();
+      document.getElementById('export-modal').classList.add('hidden');
+    });
 
-        recorder.ondataavailable = e => exportChunks.push(e.data);
-        recorder.onstop = () => {
-          const finalBlob = new Blob(exportChunks, { type: 'video/webm' });
-          const exportUrl = URL.createObjectURL(finalBlob);
+    async function exportStudioComposition() {
+      const pb = AppState.playback;
+      if (pb.exporting) return;
 
-          const a = document.createElement('a');
-          a.href = exportUrl;
-          a.download = `Acapella_Collage_${Date.now()}.webm`;
-          a.click();
+      if (getMediaItems().length === 0) {
+        showToast('Add a backing track or at least one clip to export!');
+        return;
+      }
+      const duration = getProjectDuration();
+      if (!duration) {
+        showToast('Media is still loading, try again in a moment.');
+        return;
+      }
 
-          canvasLoader.classList.add('hidden');
-          canvasLoader.classList.remove('flex');
-        };
+      pauseStudioPlayback();
+      pb.exporting = true;
 
-        playAll();
-        recorder.start();
+      const loader = document.getElementById('canvas-loader');
+      const progressText = document.getElementById('canvas-loader-progress');
+      progressText.textContent = '0%';
+      loader.classList.remove('hidden');
 
-        let progressInterval = setInterval(() => {
-          const pct = Math.round((AppState.currentTime / AppState.maxDuration) * 100);
-          canvasLoaderProgress.textContent = `${pct}%`;
+      // Audio: everything is summed on the mix bus, tapped into the recorder untouched
+      prepareAudioGraph();
+      const ctx = AudioEngine.ctx;
+      const dest = ctx.createMediaStreamDestination();
+      AudioEngine.mix.connect(dest);
+      AudioEngine.monitor.gain.value = 0; // silent while rendering
 
-          if (AppState.currentTime >= AppState.maxDuration || !AppState.isPlaying) {
-            clearInterval(progressInterval);
-            recorder.stop();
-            pauseAll();
-          }
-        }, 200);
+      // Rewind everything and give the decoders a moment to land on frame 0
+      pb.currentTime = 0;
+      resetTimeline();
+      syncMedia(0, false, true);
+      await new Promise(r => setTimeout(r, 400));
+      drawCanvasFrame();
 
-      } catch (err) {
-        alert("Export failed: " + err.message);
-        canvasLoader.classList.add('hidden');
+      const canvas = document.getElementById('studio-canvas');
+      const canvasStream = canvas.captureStream(30);
+      const exportStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...dest.stream.getAudioTracks()
+      ]);
+
+      const mimeType = pickRecorderMime();
+      const options = { videoBitsPerSecond: 8000000, audioBitsPerSecond: 320000 };
+      if (mimeType) options.mimeType = mimeType;
+
+      const recorder = new MediaRecorder(exportStream, options);
+      const chunks = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+      recorder.onstop = () => {
+        try { AudioEngine.mix.disconnect(dest); } catch (e) {}
+        AudioEngine.monitor.gain.value = AudioEngine.muted ? 0 : 1;
+
+        const type = (recorder.mimeType || mimeType || 'video/webm').split(';')[0];
+        const ext = type.includes('mp4') ? 'mp4' : 'webm';
+        const exportedBlob = new Blob(chunks, { type });
+        if (lastExportUrl) URL.revokeObjectURL(lastExportUrl);
+        lastExportUrl = URL.createObjectURL(exportedBlob);
+
+        pb.exporting = false;
+        pb.currentTime = 0;
+        resetTimeline();
+        syncMedia(0, false, true);
+        drawCanvasFrame();
+        loader.classList.add('hidden');
+
+        const previewVid = document.getElementById('export-preview-video');
+        const downloadBtn = document.getElementById('btn-export-download');
+        previewVid.src = lastExportUrl;
+        downloadBtn.href = lastExportUrl;
+        downloadBtn.download = `acapella-collage.${ext}`;
+        document.getElementById('export-modal').classList.remove('hidden');
+      };
+
+      recorder.start(250);
+      const started = startStudioPlayback({
+        exporting: true,
+        onEnd: () => setTimeout(() => { if (recorder.state !== 'inactive') recorder.stop(); }, 200)
+      });
+      if (!started) {
+        recorder.stop();
       }
     }
 
-    /* ==========================================================================
-       HARDWARE DIAGNOSTICS & HARDWARE TEST
-       ========================================================================== */
-    const btnTestHardware = document.getElementById('btn-test-hardware');
-    const diagnosticPreview = document.getElementById('diagnostic-preview');
-    const diagnosticPlaceholder = document.getElementById('diagnostic-placeholder');
-    const diagnosticMicBar = document.getElementById('diagnostic-mic-bar');
-    const diagnosticMicVal = document.getElementById('diagnostic-mic-val');
-
-    btnTestHardware.addEventListener('click', async () => {
+    document.getElementById('btn-export-save-project')?.addEventListener('click', async () => {
+      const proj = AppState.currentProject;
+      proj.updatedAt = new Date().toLocaleDateString();
       try {
-        const stream = await navigator.mediaDevices.getUserMedia(getHighQualityAudioConstraints());
-        diagnosticPreview.srcObject = stream;
-        diagnosticPreview.classList.remove('hidden');
-        diagnosticPlaceholder.classList.add('hidden');
+        await saveProjectToDB(serializeProject(proj));
+        showToast('Project saved to library!');
+      } catch (e) {
+        showToast('Could not save project (storage full?).');
+      }
+      document.getElementById('export-modal').classList.add('hidden');
+    });
 
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
+    /* ==========================================================================
+       13. MEDIA LIBRARIES & RECENT PROJECTS RENDERERS
+       ========================================================================== */
+    async function renderClipsGrid() {
+      const container = document.getElementById('clips-library-grid');
+      const clips = await getAllClipsFromDB();
+
+      if (clips.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center p-8 bg-brand-card/50 rounded-2xl border border-dashed border-brand-border text-xs text-gray-400">No clips saved yet. Record or upload clips to reuse them anytime!</div>`;
+        return;
+      }
+
+      container.innerHTML = clips.map(c => `
+        <div class="glass-card p-2.5 rounded-2xl border border-brand-border space-y-2 group">
+          <div class="aspect-video bg-black rounded-xl overflow-hidden relative">
+            <video src="${clipUrl(c)}" muted playsinline preload="metadata" class="w-full h-full object-cover"></video>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white truncate">${esc(c.title)}</span>
+            <button onclick="removeClip('${c.id}')" class="text-gray-400 hover:text-red-400 p-1 text-xs">
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function removeClip(id) {
+      await deleteClipFromDB(id);
+      if (clipUrlCache.has(id)) {
+        URL.revokeObjectURL(clipUrlCache.get(id));
+        clipUrlCache.delete(id);
+      }
+      renderClipsGrid();
+      showToast('Clip deleted');
+    }
+
+    async function renderProjectsGrid() {
+      const container = document.getElementById('projects-library-grid');
+      const projects = await getAllProjectsFromDB();
+
+      if (projects.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center p-8 bg-brand-card/50 rounded-2xl border border-dashed border-brand-border text-xs text-gray-400">No saved projects found.</div>`;
+        return;
+      }
+
+      container.innerHTML = projects.map(p => `
+        <div class="glass-card p-4 rounded-2xl border border-brand-border space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">${esc(p.title)}</h4>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-purple/20 text-brand-purple border border-brand-purple/30">${p.trackCount} Tracks</span>
+          </div>
+          <p class="text-xs text-gray-400">Last updated: ${esc(p.updatedAt || 'Recently')}${p.backing ? ' &middot; with backing track' : ''}</p>
+          <div class="flex items-center gap-2 pt-1">
+            <button onclick="loadProject('${p.id}')" class="flex-1 py-2 rounded-xl gradient-btn text-white text-xs font-bold">Open Project</button>
+            <button onclick="removeProject('${p.id}')" class="p-2 rounded-xl bg-brand-bg text-gray-400 hover:text-red-400 text-xs"><i class="ph-bold ph-trash"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function renderHomeProjects() {
+      const container = document.getElementById('home-recent-projects');
+      const projects = await getAllProjectsFromDB();
+
+      if (projects.length === 0) return;
+
+      container.innerHTML = projects.slice(0, 2).map(p => `
+        <div onclick="loadProject('${p.id}')" class="p-3 rounded-2xl bg-brand-card border border-brand-border hover:border-brand-purple cursor-pointer flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl gradient-btn flex items-center justify-center text-white font-bold text-sm">${p.trackCount}</div>
+            <div>
+              <h4 class="text-xs font-bold text-white">${esc(p.title)}</h4>
+              <p class="text-[10px] text-gray-400">${esc(p.updatedAt || 'Recent')}</p>
+            </div>
+          </div>
+          <i class="ph-bold ph-caret-right text-gray-400"></i>
+        </div>
+      `).join('');
+    }
+
+    async function loadProject(id) {
+      const projects = await getAllProjectsFromDB();
+      const saved = projects.find(p => p.id === id);
+      if (!saved) return;
+
+      pauseStudioPlayback();
+      releaseBacking(AppState.currentProject.backing);
+      resetTimeline();
+      AppState.currentProject = await hydrateProject(saved);
+      navTo('create');
+      showToast('Project loaded');
+    }
+
+    async function removeProject(id) {
+      await deleteProjectFromDB(id);
+      renderProjectsGrid();
+      renderHomeProjects();
+      showToast('Project removed');
+    }
+
+    /* ==========================================================================
+       14. HARDWARE DIAGNOSTICS & HELPERS
+       ========================================================================== */
+    let diagStream = null, diagInterval = null, diagCtx = null;
+
+    document.getElementById('btn-test-hardware')?.addEventListener('click', async () => {
+      try {
+        if (diagInterval) clearInterval(diagInterval);
+        if (diagCtx) diagCtx.close().catch(() => {});
+        if (diagStream) diagStream.getTracks().forEach(t => t.stop());
+
+        diagStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: getMicConstraints() });
+        warnIfProcessed(diagStream);
+        const video = document.getElementById('diagnostic-preview');
+        const placeholder = document.getElementById('diagnostic-placeholder');
+
+        video.srcObject = diagStream;
+        video.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+
+        const AC = window.AudioContext || window.webkitAudioContext;
+        diagCtx = new AC();
+        const source = diagCtx.createMediaStreamSource(diagStream);
+        const analyser = diagCtx.createAnalyser();
         analyser.fftSize = 64;
         source.connect(analyser);
 
-        function updateDiagMeter() {
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        diagInterval = setInterval(() => {
           analyser.getByteFrequencyData(dataArray);
-          let sum = 0;
-          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-          const pct = Math.min(100, Math.round((sum / dataArray.length / 128) * 100));
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          const pct = Math.min(100, Math.round(avg * 2));
+          document.getElementById('diagnostic-mic-bar').style.width = `${pct}%`;
+          document.getElementById('diagnostic-mic-val').textContent = `${pct}%`;
+        }, 100);
 
-          diagnosticMicBar.style.width = `${pct}%`;
-          diagnosticMicVal.textContent = `${pct}%`;
-          requestAnimationFrame(updateDiagMeter);
-        }
-        updateDiagMeter();
+        showToast('Camera and Microphone test active!');
       } catch (e) {
-        alert("Diagnostic Failed: " + e.message);
+        showToast('Diagnostic failed: Permissions denied.');
       }
     });
 
-    /* ==========================================================================
-       CLIPS & PROJECTS LIBRARIES RENDERING
-       ========================================================================== */
-    async function renderClipsLibrary() {
-      const grid = document.getElementById('clips-library-grid');
-      grid.innerHTML = '';
-      const clips = await getAllFromDB('clips');
+    document.getElementById('pref-latency')?.addEventListener('input', (e) => {
+      document.getElementById('pref-latency-val').textContent = `${e.target.value} ms`;
+      AppState.currentProject.latencyMs = parseInt(e.target.value);
+      resyncNow();
+    });
 
-      if (clips.length === 0) {
-        grid.innerHTML = `<p class="col-span-full text-center text-xs text-gray-400 py-8">No recorded clips in library.</p>`;
-        return;
-      }
+    document.getElementById('pref-watermark')?.addEventListener('change', drawCanvasFrame);
 
-      clips.forEach(clip => {
-        const card = document.createElement('div');
-        card.className = 'glass-card rounded-2xl overflow-hidden border border-brand-border p-2 space-y-2';
-        const url = URL.createObjectURL(clip.blob);
-
-        card.innerHTML = `
-          <video src="${url}" class="w-full aspect-square object-cover rounded-xl bg-black" controls></video>
-          <div class="flex justify-between items-center text-xs">
-            <span class="text-gray-400">${formatTime(clip.duration)}</span>
-            <button onclick="deleteClip('${clip.id}')" class="text-red-400 hover:text-red-300"><i class="ph-bold ph-trash"></i></button>
-          </div>
-        `;
-        grid.appendChild(card);
-      });
+    function formatTime(seconds) {
+      if (!isFinite(seconds) || seconds < 0) seconds = 0;
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      const ms = Math.floor((seconds % 1) * 10);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms}`;
     }
 
-    async function deleteClip(id) {
-      await deleteFromDB('clips', id);
-      renderClipsLibrary();
-    }
-
-    async function renderProjectsLibrary() {
-      const grid = document.getElementById('projects-library-grid');
-      grid.innerHTML = '<p class="col-span-full text-center text-xs text-gray-400 py-8">No saved project files.</p>';
-    }
-
-    /* ==========================================================================
-       INITIALIZATION
-       ========================================================================== */
-    window.addEventListener('DOMContentLoaded', async () => {
+    /* Initialize default app state on window load */
+    window.onload = async () => {
       await initDB();
-      setTrackCount(4);
-    });
+      startNewProjectWithTracks(4);
+      navTo('home');
+    };
   </script>
 </body>
 </html>
